@@ -4,7 +4,7 @@
   "description": "\"# COMP7082GRP9\"",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",
@@ -19,6 +19,7 @@
   "homepage": "https://github.com/Snowballxld/COMP7082GRP9#readme",
   "dependencies": {
     "dotenv": "^17.2.2",
+    "ejs": "^3.1.10",
     "express": "^5.1.0"
   }
 }

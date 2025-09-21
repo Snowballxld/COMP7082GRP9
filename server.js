@@ -6,10 +6,12 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
+app.use(express.static("public"));
+app.set("view engine", "ejs");
 
 // Example route
 app.get("/", (req, res) => {
-  res.send("Campus Map Navigator API is running 🚀");
+  res.render("index");
 });
 
 // Future endpoint: get buildings

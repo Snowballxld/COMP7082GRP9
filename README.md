@@ -1,5 +1,9 @@
 "# COMP7082GRP9" 
 
+After all setup is complete, you can start the server with
+
+npm start
+
 setup of environment, message me if any problems
 
 1. Install Git (with Git Bash)
@@ -34,3 +38,12 @@ npm install express dotenv
 node server.js
 
 6. Go to localhost:5000
+
+
+Update with ejs
+
+1. Install ejs
+
+Run this in your terminal:
+npm install ejs
+
