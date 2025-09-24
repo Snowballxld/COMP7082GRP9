@@ -1,27 +1,24 @@
 import express from "express";
+import path from "path";
 import dotenv from "dotenv";
+import bcitMapRouter from "./routes/bcitMap.js";
 
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-app.use(express.json());
-app.use(express.static("public"));
 app.set("view engine", "ejs");
+app.set("views", path.join(process.cwd(), "views"));
 
-// Example route
-app.get("/", (req, res) => {
-  res.render("index");
-});
+// Static assets
+app.use(express.static(path.join(process.cwd(), "public")));
 
-// Future endpoint: get buildings
-app.get("/api/buildings", (req, res) => {
-  res.json([
-    { id: 1, name: "SE2 - Student Services", lat: 49.250, lng: -123.001 },
-    { id: 2, name: "SW1 - Technology Building", lat: 49.249, lng: -123.002 }
-  ]);
-});
+// Serve the dist folder from node_modules
+app.use(
+  "/vendor/mapbox-gl",
+  express.static(path.join(process.cwd(), "node_modules/mapbox-gl/dist"))
+);
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Mount route at /bcit-map
+app.use("/", bcitMapRouter);
+
+app.listen(3000, () => console.log("→ http://localhost:3000/"));
