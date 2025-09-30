@@ -1,14 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <head>
   <meta charset="UTF-8">
-  <title>Campus Navigator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
-</head>
 <body>
-  <h1>Welcome to Campus Map Navigator</h1>
-  <p>This is your first EJS-powered page 🚀</p>
+  <%- include('_menu', { page: 'index' }) %>
+
+  <!-- Hero Section -->
+  <main class="hero">
+    <div class="hero-content">
+      <h2>Welcome to Campus Map Navigator</h2>
+      <p>Explore the BCIT campus, manage nodes, and discover shortest routes with ease.</p>
+      <a href="/map" class="btn">Get Started</a>
+    </div>
+  </main>
 </body>
 </html>

@@ -1,0 +1,44 @@
+<header>
+  <div class="nav-container">
+    <h1 class="site-title"><%= title %></h1>
+    <nav>
+      <div class="nav-toggle" id="nav-toggle">&#9776;</div>
+        <ul class="nav-menu" id="nav-menu">
+        <li>
+            <% if(page === 'index'){ %>
+            <span class="active">Home</span>
+            <% } else { %>
+            <a href="/" class="<%= page === 'index' ? 'active' : '' %>">Home</a>
+            <% } %>
+        </li>
+
+        <li>
+            <% if(page === 'map'){ %>
+            <span class="active">Map</span>
+            <% } else { %>
+            <a href="/map" class="<%= page === 'map' ? 'active' : '' %>">Map</a>
+            <% } %>
+        </li>
+
+        <li>
+            <% if(page === 'nodes'){ %>
+            <span class="active">Nodes</span>
+            <% } else { %>
+            <a href="/nodes" class="<%= page === 'nodes' ? 'active' : '' %>">Nodes</a>
+            <% } %>
+        </li>
+
+        <li>
+            <% if(page === 'about'){ %>
+            <span class="active">About</span>
+            <% } else { %>
+            <a href="/about" class="<%= page === 'about' ? 'active' : '' %>">About</a>
+            <% } %>
+        </li>
+        </ul>
+
+    </nav>
+  </div>
+</header>
+
+<script src="/js/menu.js"></script>

@@ -24,26 +24,16 @@ Run installer (check Add to PATH).
 node -v
 npm -v
 
-3. Initialize Node.js Project
+3. Install Dependencies
 
-If starting from scratch (first person does this, others just git pull):
-npm init -y
+npm install
 
-4. Install Dependencies
+4. Run the Server
 
-npm install express dotenv
+npm start
 
-5. Run the Server
+5. Go to localhost:5000
 
-node server.js
+NOTE: express is now "express": "^4.21.2" because of the routing issues.
 
-6. Go to localhost:5000
-
-
-Update with ejs
-
-1. Install ejs
-
-Run this in your terminal:
-npm install ejs
-
+if you have any issues please contact Adam

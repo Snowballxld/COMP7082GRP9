@@ -4,7 +4,7 @@
   "description": "\"# COMP7082GRP9\"",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node --watch server.js"
   },
   "repository": {
     "type": "git",
@@ -20,6 +20,6 @@
   "dependencies": {
     "dotenv": "^17.2.2",
     "ejs": "^3.1.10",
-    "express": "^5.1.0"
+    "express": "^4.21.2"
   }
 }

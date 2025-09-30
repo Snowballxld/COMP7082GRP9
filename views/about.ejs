@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <%- include('_menu', { page: 'about' }) %>
+
+  <main class="about">
+    <div class="about-content">
+      <h2>About Campus Map Navigator</h2>
+      <p>
+        Campus Map Navigator is designed to help BCIT students, faculty, and visitors 
+        easily navigate the campus. Explore buildings, manage points of interest, and find 
+        the shortest routes with ease.
+      </p>
+
+      <h3>Our Team</h3>
+      <div class="team">
+        <div class="team-member">
+          <h4>Joey Driedger</h4>
+          <p>Front-End Development & Design</p>
+        </div>
+        <div class="team-member">
+          <h4>Adam Van Woerden</h4>
+          <p>Backend & API Integration</p>
+        </div>
+        <div class="team-member">
+          <h4>Keagan P</h4>
+          <p>Routing & Database Management</p>
+        </div>
+        <div class="team-member">
+          <h4>John Guo</h4>
+          <p>Testing & Documentation</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

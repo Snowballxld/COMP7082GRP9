@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <%- include('_menu', { page: 'nodes' }) %>
+
+  <main class="nodes">
+    <div class="nodes-content">
+      <h2>Manage Campus Nodes</h2>
+      <p>Create, edit, and view points of interest across BCIT campus.</p>
+
+      <!-- Node Creation Form -->
+      <section class="node-form">
+        <h3>Add New Node</h3>
+        <form id="nodeForm" action="/nodes" method="POST">
+          <input type="text" name="name" placeholder="Node Name" required>
+          <input type="text" name="building" placeholder="Building" required>
+          <input type="text" name="floor" placeholder="Floor" required>
+          <input type="text" name="coordinates" placeholder="Coordinates (lat,lng)" required>
+          <button type="submit" class="btn">Add Node</button>
+        </form>
+      </section>
+
+      <!-- Node List -->
+      <section class="node-list">
+        <h3>Existing Nodes</h3>
+        <ul id="nodesList">
+          <!-- Nodes will be dynamically rendered here -->
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <script src="/js/nodes.js"></script>
+</body>
+</html>
