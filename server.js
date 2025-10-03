@@ -3,7 +3,6 @@ import path from "path";
 import dotenv from "dotenv";
 import bcitMapRouter from "./routes/bcitMap.js";
 import route from "./routes/route.js";
-import path from "path";
 import { fileURLToPath } from "url";
 
 dotenv.config();
@@ -16,6 +15,11 @@ const __dirname = path.dirname(__filename);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
+
+app.use(
+    "/vendor/mapbox-gl",
+    express.static(path.join(process.cwd(), "node_modules/mapbox-gl/dist"))
+)
 
 app.use('/', route);
 

@@ -11,6 +11,11 @@ router.get('/map', (req, res) => {
   res.render('map', { page: 'map', title: 'Campus Map Navigator – Map' });
 });
 
+router.get("/bcit-map", (req, res) => {
+  // Pass token to EJS; public JS reads it from a meta tag
+  res.render("bcit-map", { MAPBOX_TOKEN: process.env.MAPBOX_TOKEN });
+});
+
 // Node Management page
 router.get('/nodes', (req, res) => {
   res.render('nodes', { page: 'nodes', title: 'Campus Map Navigator – Node Management' });
