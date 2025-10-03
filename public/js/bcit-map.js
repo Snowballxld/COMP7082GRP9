@@ -23,8 +23,8 @@ window.addEventListener("DOMContentLoaded", () => {
     style: "mapbox://styles/mapbox/streets-v12",
     center: [BCIT_BURNABY.lng, BCIT_BURNABY.lat],
     zoom: 15.3,
-    pitch: 45,
-    bearing: -10,
+    pitch: 0,
+    bearing: 0,
   });
 
   map.on("error", (e) => console.error("[BCIT MAP] map error:", e));
