@@ -1,5 +1,7 @@
 import express from "express";
+import path from "path";
 import dotenv from "dotenv";
+import bcitMapRouter from "./routes/bcitMap.js";
 import route from "./routes/route.js";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -17,6 +19,4 @@ app.set("view engine", "ejs");
 
 app.use('/', route);
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(3000, () => console.log("→ http://localhost:3000/"));
