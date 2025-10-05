@@ -8,7 +8,7 @@ router.get('/', (req, res) => {
 
 // Map page
 router.get('/map', (req, res) => {
-  res.render('map', { page: 'map', title: 'Campus Map Navigator – Map' });
+  res.render('map', { MAPBOX_TOKEN: process.env.MAPBOX_TOKEN, page: 'map', title: 'Campus Map Navigator – Map' });
 });
 
 router.get("/bcit-map", (req, res) => {

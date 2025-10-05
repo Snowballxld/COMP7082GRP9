@@ -23,4 +23,6 @@ app.use(
 
 app.use('/', route);
 
-app.listen(3000, () => console.log("→ http://localhost:3000/"));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
