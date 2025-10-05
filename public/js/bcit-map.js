@@ -16,7 +16,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   mapboxgl.accessToken = token;
 
-  const BCIT_BURNABY = { lng: -123.0036, lat: 49.251 };
+  const BCIT_BURNABY = { lng: -123, lat: 49.251 };
 
   const map = new mapboxgl.Map({
     container: "map",
@@ -39,149 +39,161 @@ window.addEventListener("DOMContentLoaded", () => {
     "top-right"
   );
 
-  // Demo data
-  const buildingsIndex = {
-    SE12: { center: [-123.0049, 49.2509] },
-    SE2: { center: [-123.0041, 49.2519] },
-    SW1: { center: [-123.0066, 49.252] },
-    SW3: { center: [-123.0079, 49.2514] },
+  // --- Helpers ---
+  const getJSON = async (url) => {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
+    return res.json();
   };
 
-  const entrances = {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        properties: { name: "SE12 Main Entrance" },
-        geometry: { type: "Point", coordinates: [-123.00485, 49.25085] },
-      },
-      {
-        type: "Feature",
-        properties: { name: "SE2 Entrance" },
-        geometry: { type: "Point", coordinates: [-123.00405, 49.25185] },
-      },
-    ],
+  // Fallback rough center if an index entry is missing
+  const roughCenter = (geom) => {
+    try {
+      const coords = [];
+      const collect = (g) => {
+        if (!g) return;
+        const t = g.type;
+        if (t === "Point") coords.push(g.coordinates);
+        else if (t === "MultiPoint" || t === "LineString")
+          coords.push(...g.coordinates);
+        else if (t === "MultiLineString" || t === "Polygon")
+          g.coordinates.forEach((c) => coords.push(...c));
+        else if (t === "MultiPolygon")
+          g.coordinates.forEach((p) => p.forEach((c) => coords.push(...c)));
+        else if (t === "GeometryCollection") g.geometries.forEach(collect);
+      };
+      collect(geom);
+      if (!coords.length) return null;
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
+      for (const [x, y] of coords) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+      return [(minX + maxX) / 2, (minY + maxY) / 2];
+    } catch {
+      return null;
+    }
   };
 
-  const notable = {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        properties: { name: "The Roundabout" },
-        geometry: { type: "Point", coordinates: [-123.0031, 49.2511] },
-      },
-      {
-        type: "Feature",
-        properties: { name: "Library (SE14)" },
-        geometry: { type: "Point", coordinates: [-123.0056, 49.2512] },
-      },
-    ],
-  };
+  // --- Load data & layers ---
+  map.on("load", async () => {
+    try {
+      // Update these paths to wherever you serve your files from
+      const [buildings, buildingsIndex] = await Promise.all([
+        getJSON("/data/bcit-coordinates.geojson"),
+        getJSON("/data/bcit-buildings-index.json"),
+      ]);
 
-  map.on("load", () => {
-    // Demo building footprints
-    const demoBuildings = {
-      type: "FeatureCollection",
-      features: Object.entries(buildingsIndex).map(([code, info]) => {
-        const [lng, lat] = info.center;
-        const d = 0.00025;
-        return {
-          type: "Feature",
-          properties: { code },
-          geometry: {
-            type: "Polygon",
-            coordinates: [
-              [
-                [lng - d, lat - d],
-                [lng + d, lat - d],
-                [lng + d, lat + d],
-                [lng - d, lat + d],
-                [lng - d, lat - d],
-              ],
-            ],
-          },
-        };
-      }),
-    };
+      // Make index available to the search UI
+      window.__BUILDINGS_INDEX__ = buildingsIndex || {};
 
-    map.addSource("buildings", { type: "geojson", data: demoBuildings });
-    map.addLayer({
-      id: "buildings-fill",
-      type: "fill",
-      source: "buildings",
-      paint: { "fill-color": "#93c5fd", "fill-opacity": 0.35 },
-    });
-    map.addLayer({
-      id: "buildings-line",
-      type: "line",
-      source: "buildings",
-      paint: { "line-color": "#2563eb", "line-width": 1.2 },
-    });
+      // Add the buildings source (supports Polygon & MultiPolygon)
+      map.addSource("buildings", { type: "geojson", data: buildings });
 
-    map.addSource("entrances", { type: "geojson", data: entrances });
-    map.addLayer({
-      id: "entrances-circles",
-      type: "circle",
-      source: "entrances",
-      paint: {
-        "circle-radius": 6,
-        "circle-color": "#86efac",
-        "circle-stroke-color": "#065f46",
-        "circle-stroke-width": 1,
-      },
-    });
+      // Fill + outline
+      map.addLayer({
+        id: "buildings-fill",
+        type: "fill",
+        source: "buildings",
+        paint: { "fill-color": "#93c5fd", "fill-opacity": 0.35 },
+      });
+      map.addLayer({
+        id: "buildings-line",
+        type: "line",
+        source: "buildings",
+        paint: { "line-color": "#2563eb", "line-width": 1.2 },
+      });
 
-    map.addSource("notable", { type: "geojson", data: notable });
-    map.addLayer({
-      id: "notable-symbols",
-      type: "symbol",
-      source: "notable",
-      layout: {
-        "icon-image": "marker-15",
-        "icon-size": 1,
-        "text-field": ["get", "name"],
-        "text-offset": [0, 1],
-        "text-anchor": "top",
-      },
-    });
+      // Click popup with sensible title fallback
+      // Click popup with sensible title fallback
+      map.on("click", "buildings-fill", (e) => {
+        const f = e.features?.[0];
+        if (!f) return;
+        const p = f.properties || {};
+        const title =
+          p.BuildingName ||
+          p.Display_Name ||
+          p.SiteName ||
+          p.BldgCode ||
+          p.name ||
+          p.code ||
+          "Building";
+        new mapboxgl.Popup({ anchor: "bottom", offset: 8 })
+          .setLngLat(e.lngLat)
+          .setHTML(`<div class="popup"><strong>${title}</strong></div>`)
+          .addTo(map);
+      });
 
-    map.on("click", "buildings-fill", (e) => {
-      const f = e.features[0];
-      new mapboxgl.Popup({ anchor: "bottom", offset: 8 })
-        .setLngLat(e.lngLat)
-        .setHTML(
-          `<div class="popup"><strong>Building ${f.properties.code}</strong></div>`
-        )
-        .addTo(map);
-    });
-
-    map.on(
-      "mouseenter",
-      "buildings-fill",
-      () => (map.getCanvas().style.cursor = "pointer")
-    );
-    map.on(
-      "mouseleave",
-      "buildings-fill",
-      () => (map.getCanvas().style.cursor = "")
-    );
+      map.on(
+        "mouseenter",
+        "buildings-fill",
+        () => (map.getCanvas().style.cursor = "pointer")
+      );
+      map.on(
+        "mouseleave",
+        "buildings-fill",
+        () => (map.getCanvas().style.cursor = "")
+      );
+    } catch (err) {
+      console.error("[BCIT MAP] Failed to load GeoJSON/index:", err);
+    }
   });
 
-  // Search
+  // --- Search ---
   const searchBtn = document.getElementById("searchBtn");
   const searchInput = document.getElementById("searchInput");
 
   function flyToBuilding(code) {
     const key = (code || "").trim().toUpperCase();
-    if (!key || !buildingsIndex[key]) return;
-    map.flyTo({
-      center: buildingsIndex[key].center,
-      zoom: 18,
-      speed: 0.6,
-      curve: 1.4,
-      essential: true,
-    });
+    const ix = window.__BUILDINGS_INDEX__ || {};
+    // Prefer precomputed index; if not found, try to find a feature by Display_Name as a fallback
+    if (!key) return;
+
+    if (ix[key]) {
+      map.flyTo({
+        center: ix[key].center,
+        zoom: 18,
+        speed: 0.6,
+        curve: 1.4,
+        essential: true,
+      });
+      return;
+    }
+
+    // Fallback: scan current source features (best-effort)
+    const src = map.getSource("buildings");
+    if (src && src._data && src._data.features) {
+      const f = src._data.features.find((feat) => {
+        const p = feat.properties || {};
+        const candidates = [
+          p.BldgCode,
+          p.Display_Name,
+          p.SiteName,
+          p.name,
+          p.code,
+        ]
+          .filter(Boolean)
+          .map((s) => String(s).toUpperCase());
+        return candidates.includes(key);
+      });
+      if (f) {
+        const center = roughCenter(f.geometry);
+        if (center) {
+          map.flyTo({
+            center,
+            zoom: 18,
+            speed: 0.6,
+            curve: 1.4,
+            essential: true,
+          });
+        }
+      }
+    }
   }
 
   if (searchBtn)

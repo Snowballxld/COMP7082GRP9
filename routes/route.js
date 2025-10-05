@@ -27,8 +27,10 @@ router.get('/about', (req, res) => {
 });
 
 // Catch-all redirect for invalid routes
+/*
 router.get('*', (req, res) => {
   res.redirect('/');
 });
+*/
 
 export default router;
