@@ -1,4 +1,6 @@
 import express from "express";
+import { showHome, handlePathRequest } from "../controllers/pathfinderController.js";
+
 const router = express.Router();
 
 // Home page
@@ -20,6 +22,14 @@ router.get('/nodes', (req, res) => {
 router.get('/about', (req, res) => {
   res.render('about', { page: 'about', title: 'Campus Map Navigator – About' });
 });
+
+// Interior map page
+router.get('/interior', (req, res) => {
+  res.render('interior', { page: 'interior', title: 'Building Map Navigator – Interior' });
+});
+
+// Pathfinding submission
+router.post("/find-path", handlePathRequest);
 
 // Catch-all redirect for invalid routes
 router.get('*', (req, res) => {

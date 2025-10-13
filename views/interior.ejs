@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        <%= title %>
+    </title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+    <%- include('_menu', { page: 'interior' }) %>
+
+        <h1>Multi-Floor Pathfinder</h1>
+        <form action="/find-path" method="post">
+            <label>Start (floor,row,col):</label>
+            <input type="text" name="start" placeholder="ex: 2,255,110" required>
+
+            <label>Goal Room Number:</label>
+            <input type="number" name="goal" placeholder="ex: 102" required>
+
+            <button type="submit">Find Path</button>
+        </form>
+
+        <div class="floors">
+            <div>
+                <h3>Floor 1</h3>
+                <img src="/img/se06F1BasicPlan.jpg" width="600">
+            </div>
+            <div>
+                <h3>Floor 2</h3>
+                <img src="/img/se06F2BasicPlan.jpg" width="600">
+            </div>
+        </div>
+</body>
+
+</html>
