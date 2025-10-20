@@ -8,7 +8,7 @@ let nodes = [
   { id: 2, name: "Cafeteria", building: "B", floor: "2", coordinates: "30,40" }
 ];
 
-// GET /api/nodes
+// GET /nodes
 router.get("/", (req, res) => {
   const { name, floor } = req.query;
 
@@ -26,7 +26,7 @@ router.get("/", (req, res) => {
   res.json(results);
 });
 
-// POST /api/nodes
+// POST /nodes
 router.post("/", (req, res) => {
   const { name, building, floor, coordinates } = req.body;
 

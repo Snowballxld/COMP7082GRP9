@@ -1,14 +1,16 @@
 import express from "express";
+import { checkSession } from "../middleware/authMiddleware.js";
+
 const router = express.Router();
 
 // Home page
 router.get('/', (req, res) => {
-  res.render('index', { page: 'index', title: 'Wayfindr the Campus Map Navigator' });
+  res.render('index', { page: 'index', title: 'Wayfindr the Campus Map Navigator', user: req.session.user });
 });
 
 // Map page
 router.get('/map', (req, res) => {
-  res.render('map', { MAPBOX_TOKEN: process.env.MAPBOX_TOKEN, page: 'map', title: 'Wayfindr – Map' });
+  res.render('map', { MAPBOX_TOKEN: process.env.MAPBOX_TOKEN, page: 'map', title: 'Wayfindr – Map', user: req.session.user });
 });
 
 router.get("/bcit-map", (req, res) => {
@@ -17,11 +19,11 @@ router.get("/bcit-map", (req, res) => {
 });
 
 // Node Management page
-router.get('/nodes', (req, res) => {
-  res.render('nodes', { page: 'nodes', title: 'Wayfindr – Node Management' });
+router.get('/nodes', checkSession, (req, res) => {
+  res.render('nodes', { page: 'nodes', title: 'Wayfindr – Node Management', user: req.session.user });
 });
 
-router.post('/nodes', async (req, res, next) => {
+router.post('/nodes', checkSession, async (req, res, next) => {
   try {
     // ... save node
   } catch (err) {
@@ -36,7 +38,7 @@ router.get('/health', (req, res) => {
 
 // About page
 router.get('/about', (req, res) => {
-  res.render('about', { page: 'about', title: 'Wayfindr – About' });
+  res.render('about', { page: 'about', title: 'Wayfindr – About', user: req.session.user });
 });
 
 // Catch-all redirect for invalid routes

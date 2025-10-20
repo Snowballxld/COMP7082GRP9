@@ -8,6 +8,13 @@ import { fileURLToPath } from "url";
 import { errorHandler } from './middleware/errorHandler.js';
 import nodeRoutes from "./routes/nodes.js";
 import { requestLogger } from "./middleware/logger.js";
+import { verifyFirebaseToken } from "./middleware/authMiddleware.js";
+import admin from './config/firebase.js';
+import authRouter from './routes/auth.js';
+import session from "express-session";
+
+console.log('Firebase Admin initialized:', !!admin); // temporary check
+
 
 dotenv.config();
 const app = express();
@@ -18,6 +25,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(express.json());
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || "keyboard cat",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: false, // true if using HTTPS
+    maxAge: 1000 * 60 * 60 * 24 * 5 // 5 days
+  }
+}));
 
 const mapboxDistDir = path.dirname(require.resolve("mapbox-gl/dist/mapbox-gl.js"));
 
@@ -36,7 +54,7 @@ app.use(
     "/vendor/mapbox-gl",
     express.static(path.join(process.cwd(), "node_modules/mapbox-gl/dist"))
 )
-
+app.use('/auth', authRouter);
 app.use("/api/nodes", nodeRoutes);
 app.use('/', route);
 
