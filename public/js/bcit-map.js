@@ -282,7 +282,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
       // Position popup to the right of the building
       const center = roughCenter(f.geometry) || e.lngLat;
-      const offsetMeters = 25;
+      const offsetMeters = 10;
       const metersToDegrees =
         offsetMeters / (111320 * Math.cos((center[1] * Math.PI) / 180));
       const rightOfShape = [center[0] + metersToDegrees, center[1]];
