@@ -26,5 +26,17 @@ export default function nodeRoutes(db) {
     res.status(201).json({ id: newDoc.id, ...newDoc.data() });
   });
 
+  
+  router.get("/data", async (req, res) => {
+  try {
+    const snapshot = await db.collection("nodes").get();
+    const nodes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(nodes);
+  } catch (err) {
+    console.error("Error loading nodes:", err);
+    res.status(500).json({ error: "Failed to load nodes." });
+  }
+});
+
   return router;
 }

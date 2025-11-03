@@ -27,39 +27,44 @@ window.addEventListener("DOMContentLoaded", () => {
     bearing: 0,
   });
 
-  // Create a DOM element for the marker
-const el = document.createElement('div');
-el.className = 'marker'; // Apply CSS styling for the marker icon
-el.textContent = '📍'; // or el.innerHTML = '<b>NYC</b>';
-el.style.backgroundImage = 'url(public/data/709699.png)'; // Set custom icon image
-el.style.width = '30px';
-el.style.height = '30px';
+  // --- Pull nodes from backend API and render markers ---
+  async function loadNodes() {
+    try {
+      const res = await fetch("/api/nodes/data");
+      if (!res.ok) throw new Error("Failed to load nodes");
 
-const el1 = el.cloneNode(true)
-const el2 = el.cloneNode(true)
-const el3 = el.cloneNode(true)
-const el4 = el.cloneNode(true)
-const el5 = el.cloneNode(true)
+      const nodes = await res.json();
+      console.log(nodes);
 
-// Create the marker and add it to the map
-new mapboxgl.Marker(el)
-    .setLngLat([BCIT_BURNABY.lng - 0.00107, BCIT_BURNABY.lat - 0.000275]) // Marker coordinates
-    .addTo(map);
-new mapboxgl.Marker(el1)
-    .setLngLat([BCIT_BURNABY.lng - 0.00080, BCIT_BURNABY.lat - 0.0003]) // Marker coordinates
-    .addTo(map);
-new mapboxgl.Marker(el2)
-    .setLngLat([BCIT_BURNABY.lng - 0.00107, BCIT_BURNABY.lat - 0.0005]) // Marker coordinates
-    .addTo(map);
-new mapboxgl.Marker(el3)
-    .setLngLat([BCIT_BURNABY.lng - 0.0011, BCIT_BURNABY.lat - 0.00053]) // Marker coordinates
-    .addTo(map);
-new mapboxgl.Marker(el4)
-    .setLngLat([BCIT_BURNABY.lng - 0.0011, BCIT_BURNABY.lat - 0.00085]) // Marker coordinates
-    .addTo(map);
-new mapboxgl.Marker(el5)
-    .setLngLat([BCIT_BURNABY.lng - 0.00055, BCIT_BURNABY.lat - 0.00034]) // Marker coordinates
-    .addTo(map);
+      nodes.forEach((node) => {
+        if (node.long && node.lat) {
+          const el = document.createElement("div");
+          el.className = "marker";
+          el.textContent = "O";
+
+          new mapboxgl.Marker(el)
+            .setLngLat([parseFloat(node.long), parseFloat(node.lat)])
+            .setPopup(
+            new mapboxgl.Popup({ offset: 25 })
+              .setHTML(`
+                <strong>${node.name || "Node"}</strong><br>
+                Lat: ${node.lat}<br>
+                Lng: ${node.long}<br>
+                Alt: ${node.alt ?? "N/A"}<br>
+                Connections: ${Array.isArray(node.connections) ? node.connections.join(", ") : "None"}
+              `)
+            )
+            .addTo(map);
+        }
+      });
+    } catch (err) {
+      console.error("Error loading nodes:", err);
+    }
+  }
+
+  map.on("load", () => {
+    loadNodes();
+  });
 
   map.on("error", (e) => console.error("[BCIT MAP] map error:", e));
 
@@ -239,3 +244,42 @@ new mapboxgl.Marker(el5)
       if (e.key === "Enter") flyToBuilding(searchInput.value);
     });
 });
+
+
+// // --- Pull nodes from backend API and render markers ---
+// async function loadNodes() {
+//   try {
+//     const res = await fetch("/api/nodes/data");
+//     if (!res.ok) throw new Error("Failed to load nodes");
+
+//     const nodes = await res.json();
+
+//     console.log(nodes);
+
+//     nodes.forEach(node => {
+//       // Ensure valid coordinates
+//       if (node.long && node.lat) {
+//         const el = document.createElement("div");
+//         el.className = "marker";
+//         el.textContent = "O"; // styleable marker
+
+//         new mapboxgl.Marker(el)
+//           .setLngLat([parseFloat(node.long), parseFloat(node.lat)])
+//           // .setPopup(
+//           //   new mapboxgl.Popup({ offset: 25 })
+//           //     .setHTML(`
+//           //       <strong>${node.name || "Node"}</strong><br>
+//           //       Lat: ${node.lat}<br>
+//           //       Lng: ${node.long}<br>
+//           //       Alt: ${node.alt ?? "N/A"}<br>
+//           //       Connections: ${Array.isArray(node.connections) ? node.connections.join(", ") : "None"}
+//           //     `)
+//           // )
+//           .addTo(map);
+//       }
+//     });
+//   } catch (err) {
+//     console.error("Error loading nodes:", err);
+//   }
+// }
+
