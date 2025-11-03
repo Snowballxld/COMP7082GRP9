@@ -46,18 +46,14 @@ window.addEventListener("DOMContentLoaded", () => {
   const asLines = (v) => {
     if (v == null) return "";
     if (Array.isArray(v))
-      return v
-        .map((x) => String(x).trim())
-        .filter(Boolean)
-        .join("<br>");
+      return v.map((x) => String(x).trim()).filter(Boolean).join("<br>");
     const s = String(v).trim();
     if (!s) return "";
-    // split by comma, semicolon, or newline
-    const parts = s
+    return s
       .split(/[\n;,]/)
       .map((t) => t.trim())
-      .filter(Boolean);
-    return parts.join("<br>");
+      .filter(Boolean)
+      .join("<br>");
   };
 
   const roughCenter = (geom) => {
@@ -67,20 +63,14 @@ window.addEventListener("DOMContentLoaded", () => {
         if (!g) return;
         const t = g.type;
         if (t === "Point") coords.push(g.coordinates);
-        else if (t === "MultiPoint" || t === "LineString")
-          coords.push(...g.coordinates);
-        else if (t === "MultiLineString" || t === "Polygon")
-          g.coordinates.forEach((c) => coords.push(...c));
-        else if (t === "MultiPolygon")
-          g.coordinates.forEach((p) => p.forEach((c) => coords.push(...c)));
+        else if (t === "MultiPoint" || t === "LineString") coords.push(...g.coordinates);
+        else if (t === "MultiLineString" || t === "Polygon") g.coordinates.forEach((c) => coords.push(...c));
+        else if (t === "MultiPolygon") g.coordinates.forEach((p) => p.forEach((c) => coords.push(...c)));
         else if (t === "GeometryCollection") g.geometries.forEach(collect);
       };
       collect(geom);
       if (!coords.length) return null;
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const [x, y] of coords) {
         if (x < minX) minX = x;
         if (y < minY) minY = y;
@@ -100,55 +90,67 @@ window.addEventListener("DOMContentLoaded", () => {
         if (!g) return;
         const t = g.type;
         if (t === "Point") coords.push(g.coordinates);
-        else if (t === "MultiPoint" || t === "LineString")
-          coords.push(...g.coordinates);
-        else if (t === "MultiLineString" || t === "Polygon")
-          g.coordinates.forEach((c) => coords.push(...c));
-        else if (t === "MultiPolygon")
-          g.coordinates.forEach((p) => p.forEach((c) => coords.push(...c)));
+        else if (t === "MultiPoint" || t === "LineString") coords.push(...g.coordinates);
+        else if (t === "MultiLineString" || t === "Polygon") g.coordinates.forEach((c) => coords.push(...c));
+        else if (t === "MultiPolygon") g.coordinates.forEach((p) => p.forEach((c) => coords.push(...c)));
         else if (t === "GeometryCollection") g.geometries.forEach(collect);
       };
       collect(geom);
       if (!coords.length) return null;
-      let minX = Infinity,
-        minY = Infinity,
-        maxX = -Infinity,
-        maxY = -Infinity;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const [x, y] of coords) {
         if (x < minX) minX = x;
         if (y < minY) minY = y;
         if (x > maxX) maxX = x;
         if (y > maxY) maxY = y;
       }
-      return [
-        [minX, minY],
-        [maxX, maxY],
-      ];
+      return [[minX, minY],[maxX, maxY]];
     } catch {
       return null;
     }
   };
 
+  // ----------------- Debug Toast (tiny on-map banner) -----------------
+  class DebugToastControl {
+    onAdd(map) {
+      this._map = map;
+      this._el = document.createElement("div");
+      this._el.className = "mapboxgl-ctrl";
+      Object.assign(this._el.style, {
+        background: "rgba(17,24,39,.9)",
+        color: "#fff",
+        padding: "6px 10px",
+        fontSize: "12px",
+        borderRadius: "6px",
+        margin: "10px",
+        maxWidth: "60ch",
+        display: "none",
+      });
+      return this._el;
+    }
+    onRemove() { this._el?.remove(); this._map = null; }
+    show(msg, ms = 2000) {
+      this._el.textContent = msg;
+      this._el.style.display = "";
+      clearTimeout(this._t);
+      this._t = setTimeout(() => (this._el.style.display = "none"), ms);
+    }
+  }
+  const debugToast = new DebugToastControl();
+  map.addControl(debugToast, "top-left");
+
   // ----------------- Popup builder -----------------
-  const buildPopupHTML = ({
-    title,
-    buildingAddress,
-    services,
-    floorLabels,
-  }) => {
+  const buildPopupHTML = ({ title, buildingAddress, services, floorLabels }) => {
     const floorsHTML =
       floorLabels && floorLabels.length
         ? (() => {
             const mk = (label) => {
               const text = buildingAddress
-                ? `${buildingAddress} ${label} Floor`
-                : `${label} Floor`;
+                ? `${buildingAddress} Floor ${label}`
+                : `Floor ${label}`;
               return `<a href="#" data-floor="${label}">${text}</a>`;
             };
-            return (
-              mk(floorLabels[0]) +
-              (floorLabels[1] ? ` &nbsp;·&nbsp; ${mk(floorLabels[1])}` : "")
-            );
+            return mk(floorLabels[0]) + (floorLabels[1] ? ` &nbsp;·&nbsp; ${mk(floorLabels[1])}` : "");
           })()
         : "";
 
@@ -266,12 +268,11 @@ window.addEventListener("DOMContentLoaded", () => {
       this._container?.remove();
       this._container = null;
     }
-    // Provide new floors (array of labels). Defaults to bottom = index 0
+    // Provide new floors (array of labels). Does NOT auto-load; caller decides which to load first.
     setFloors(floors) {
       this._floors = Array.isArray(floors) ? [...floors] : [];
       this._i = this._floors.length ? 0 : -1;
       this._render();
-      if (this._i >= 0) this._onSelect(this._floors[this._i]); // auto-load bottom floor
     }
     setActive(label) {
       const idx = this._floors.indexOf(label);
@@ -282,10 +283,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     go(delta) {
       if (!this._floors.length) return;
-      const ni = Math.min(
-        this._floors.length - 1,
-        Math.max(0, this._i + delta)
-      );
+      const ni = Math.min(this._floors.length - 1, Math.max(0, this._i + delta));
       if (ni !== this._i) {
         this._i = ni;
         this._render();
@@ -304,35 +302,15 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Sort floors bottom→top in a sensible way (handles "Floor 01", "Floor 02", etc.)
+  // Sort floors numerically: "1","2","3",..., with non-numeric pushed to end
   const sortFloorsBottomFirst = (labels) => {
-    const rankWord = (s) => {
-      const x = String(s).toLowerCase();
-      if (/basement|b\d+/.test(x)) return -2;
-      if (/lower|l\d+/.test(x)) return -1;
-      if (/ground|main|g\d+/.test(x)) return 0;
-      if (/first|1st|floor\s*0*1\b/.test(x)) return 1;
-      const m = x.match(/(\d+)[a-z]{0,2}$/) || x.match(/floor\s*0*(\d+)/);
-      if (m) return parseInt(m[1], 10);
-      // fallback: ordinal words mapping
-      const words = [
-        "zero",
-        "one",
-        "two",
-        "three",
-        "four",
-        "five",
-        "six",
-        "seven",
-        "eight",
-        "nine",
-        "ten",
-      ];
-      const w = words.indexOf(x);
-      if (w >= 0) return w;
-      return 999; // unknown → top
-    };
-    return [...labels].sort((a, b) => rankWord(a) - rankWord(b));
+    const nums = [], rest = [];
+    for (const l of labels) {
+      const n = parseInt(String(l).trim(), 10);
+      Number.isFinite(n) ? nums.push([n, l]) : rest.push(l);
+    }
+    nums.sort((a, b) => a[0] - b[0]);
+    return [...nums.map(x => x[1]), ...rest];
   };
 
   let currentFeature = null;
@@ -345,17 +323,44 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   map.addControl(floorNav, "top-left");
 
-  const loadFloorplan = async (url, label) => {
-    try {
-      const data = await getJSON(url);
-      upsertFloorplanLayers(data);
-      floorNav.setActive(label);
-    } catch {
-      const src = map.getSource("floorplan");
-      if (src) src.setData({ type: "FeatureCollection", features: [] });
-      floorNav.setActive(label);
+const loadFloorplan = async (url, label) => {
+  const bust = url.includes("?") ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
+  debugToast.show(`Loading Floor ${label} → ${url}`);
+  console.log("[BCIT MAP] loadFloorplan:", { label, url });
+
+  try {
+    const data = await getJSON(bust);
+    if (!data || !data.type) throw new Error("Invalid GeoJSON payload");
+
+    // Quick stats
+    const feats = Array.isArray(data.features) ? data.features : [];
+    const byType = feats.reduce((m, f) => {
+      const t = f?.geometry?.type || "Unknown";
+      m[t] = (m[t] || 0) + 1;
+      return m;
+    }, {});
+    console.log("[BCIT MAP] floor stats:", { total: feats.length, byType });
+
+    // Make edges easier to see while debugging
+    upsertFloorplanLayers(data);
+    if (map.getLayer("floorplan-line")) {
+      map.setPaintProperty("floorplan-line", "line-width", 3); // thicker lines
     }
-  };
+    if (map.getLayer("floorplan-fill")) {
+      map.setPaintProperty("floorplan-fill", "fill-opacity", 0.28);
+    }
+
+    floorNav.setActive(label);
+    debugToast.show(`Loaded Floor ${label} • ${feats.length} features (${Object.entries(byType).map(([k,v])=>`${k}:${v}`).join(", ")})`, 2200);
+  } catch (err) {
+    console.warn("[BCIT MAP] failed to load floor:", label, url, err);
+    const src = map.getSource("floorplan");
+    if (src) src.setData({ type: "FeatureCollection", features: [] });
+    floorNav.setActive(label);
+    debugToast.show(`No data for Floor ${label}`, 1800);
+  }
+};
+
 
   // ----------------- Load & handle clicks -----------------
   map.on("load", async () => {
@@ -380,30 +385,32 @@ window.addEventListener("DOMContentLoaded", () => {
       paint: { "line-color": "#2563eb", "line-width": 1.2 },
     });
 
-    map.on(
-      "mouseenter",
-      "buildings-fill",
-      () => (map.getCanvas().style.cursor = "pointer")
-    );
-    map.on(
-      "mouseleave",
-      "buildings-fill",
-      () => (map.getCanvas().style.cursor = "")
-    );
+    // Hover cursor
+    map.on("mouseenter", "buildings-fill", () => (map.getCanvas().style.cursor = "pointer"));
+    map.on("mouseleave", "buildings-fill", () => (map.getCanvas().style.cursor = ""));
 
+    // Click handler
     map.on("click", "buildings-fill", async (e) => {
       const f = e.features?.[0];
       if (!f) return;
       currentFeature = f;
       const p = f.properties || {};
 
+      // Quick highlight of the clicked building
+      const selSrc = "building-selected";
+      if (!map.getSource(selSrc)) {
+        map.addSource(selSrc, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        map.addLayer({
+          id: "building-selected-line",
+          type: "line",
+          source: selSrc,
+          paint: { "line-color": "#f59e0b", "line-width": 3 }
+        });
+      }
+      map.getSource(selSrc).setData({ type: "FeatureCollection", features: [f] });
+
       const title =
-        p.BuildingName ||
-        p.Display_Name ||
-        p.BldgCode ||
-        p.SiteName ||
-        p.name ||
-        "Building";
+        p.BuildingName || p.Display_Name || p.BldgCode || p.SiteName || p.name || "Building";
 
       const buildingAddress =
         p.BuildingName || p.Display_Name || p.BldgCode || p.SiteName || "";
@@ -413,31 +420,18 @@ window.addEventListener("DOMContentLoaded", () => {
       // Build floor map (optional)
       currentFloors = {};
       if (p.floorplans && typeof p.floorplans === "object") {
-        for (const [label, url] of Object.entries(p.floorplans))
-          if (url) currentFloors[label] = url;
+        for (const [label, url] of Object.entries(p.floorplans)) if (url) currentFloors[label] = url;
       } else if (p.BldgCode) {
-        // simple filename convention (customize labels if you have more)
-        // Fallback with numeric floor labels
-        ["1", "2", "3"].forEach((num) => {
-          currentFloors[
-            num
-          ] = `/data/floorplans/${p.BldgCode}-Floor${num}.geojson`;
+        // numeric fallback — extend if you have more levels
+        ["1","2","3","4","5"].forEach((num) => {
+          currentFloors[num] = `/data/floorplans/${p.BldgCode}-Floor${num}.geojson`;
         });
       }
       const floorLabels = sortFloorsBottomFirst(Object.keys(currentFloors));
 
-      // Build & show popup (no Department row anymore)
-      const html = buildPopupHTML({
-        title,
-        buildingAddress,
-        services,
-        floorLabels,
-      });
-      const popup = new mapboxgl.Popup({
-        anchor: "top",
-        offset: 10,
-        maxWidth: "400px",
-      })
+      // Popup
+      const html = buildPopupHTML({ title, buildingAddress, services, floorLabels });
+      const popup = new mapboxgl.Popup({ anchor: "top", offset: 10, maxWidth: "400px" })
         .setLngLat(e.lngLat)
         .setHTML(html)
         .addTo(map);
@@ -448,19 +442,19 @@ window.addEventListener("DOMContentLoaded", () => {
         map.fitBounds(bounds, { padding: 60, maxZoom: 19, duration: 800 });
       } else {
         const center = roughCenter(f.geometry);
-        if (center)
-          map.flyTo({
-            center,
-            zoom: 19,
-            speed: 0.6,
-            curve: 1.4,
-            essential: true,
-          });
+        if (center) {
+          map.flyTo({ center, zoom: 19, speed: 0.6, curve: 1.4, essential: true });
+        }
       }
 
-      // Floor navigator (Prev/Next + label) — default to bottom
+      // Floor navigator — start with the lowest available, not always "1"
       if (floorLabels.length) {
-        floorNav.setFloors(floorLabels); // auto-loads bottom (index 0)
+        const sorted = floorLabels; // already sorted lowest→highest
+        const lowest = sorted[0];
+        floorNav.setFloors(sorted); // no auto-load inside control
+        if (lowest && currentFloors[lowest]) {
+          await loadFloorplan(currentFloors[lowest], lowest);
+        }
       } else {
         floorNav.setFloors([]); // hides control
         const src = map.getSource("floorplan");
@@ -469,13 +463,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
       // Popup actions
       const el = popup.getElement();
-      el.querySelector('[data-action="zoom"]')?.addEventListener(
-        "click",
-        () => {
-          const b = geometryBounds(f.geometry);
-          if (b) map.fitBounds(b, { padding: 60, maxZoom: 19, duration: 600 });
-        }
-      );
+      el.querySelector('[data-action="zoom"]')?.addEventListener("click", () => {
+        const b = geometryBounds(f.geometry);
+        if (b) map.fitBounds(b, { padding: 60, maxZoom: 19, duration: 600 });
+      });
 
       // Optional: allow clicking the “Floor Plans” links to jump directly
       el.querySelectorAll("[data-floor]").forEach((a) => {
@@ -501,13 +492,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (!key) return;
 
     if (ix[key]) {
-      map.flyTo({
-        center: ix[key].center,
-        zoom: 18,
-        speed: 0.6,
-        curve: 1.4,
-        essential: true,
-      });
+      map.flyTo({ center: ix[key].center, zoom: 18, speed: 0.6, curve: 1.4, essential: true });
       return;
     }
 
@@ -515,39 +500,24 @@ window.addEventListener("DOMContentLoaded", () => {
     if (src && src._data && src._data.features) {
       const f = src._data.features.find((feat) => {
         const p = feat.properties || {};
-        const candidates = [
-          p.BldgCode,
-          p.Display_Name,
-          p.SiteName,
-          p.name,
-          p.code,
-        ]
-          .filter(Boolean)
-          .map((s) => String(s).toUpperCase());
+        const candidates = [p.BldgCode, p.Display_Name, p.SiteName, p.name, p.code]
+          .filter(Boolean).map((s) => String(s).toUpperCase());
         return candidates.includes(key);
       });
       if (f) {
         const center = roughCenter(f.geometry);
         if (center) {
-          map.flyTo({
-            center,
-            zoom: 18,
-            speed: 0.6,
-            curve: 1.4,
-            essential: true,
-          });
+          map.flyTo({ center, zoom: 18, speed: 0.6, curve: 1.4, essential: true });
         }
       }
     }
   }
 
-  if (searchBtn)
-    searchBtn.addEventListener("click", () =>
-      flyToBuilding(searchInput?.value)
-    );
+  if (searchBtn) searchBtn.addEventListener("click", () => flyToBuilding(searchInput?.value));
   if (searchInput) {
     searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") flyToBuilding(searchInput.value);
     });
   }
 });
+
