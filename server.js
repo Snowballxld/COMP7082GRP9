@@ -24,6 +24,8 @@ const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const db = admin.firestore();
+
 app.use(express.json());
 
 app.use(session({
@@ -55,7 +57,7 @@ app.use(
     express.static(path.join(process.cwd(), "node_modules/mapbox-gl/dist"))
 )
 app.use('/auth', authRouter);
-app.use("/api/nodes", nodeRoutes);
+app.use("/api/nodes", nodeRoutes(db));
 app.use('/', route);
 
 app.use(errorHandler);

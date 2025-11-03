@@ -17,11 +17,14 @@
       <!-- Node Creation Form -->
       <section class="node-form">
         <h3>Add New Node</h3>
+        <button id="getLocation" class="btn">Use Current Location</button>
+        <p id="status" style="margin-top: 10px; font-size: 0.9em; color: gray;"></p>
+
         <form id="nodeForm" action="/nodes" method="POST">
-          <input type="text" name="name" placeholder="Node Name" required>
-          <input type="text" name="building" placeholder="Building" required>
-          <input type="text" name="floor" placeholder="Floor" required>
-          <input type="text" name="coordinates" placeholder="Coordinates (lat,lng)" required>
+          <input type="text" id="longitude" name="longitude" placeholder="Longitude" required>
+          <input type="text" id="latitude" name="latitude" placeholder="Latitude" required>
+          <input type="text" id="altitude" name="altitude" placeholder="Altitude" required>
+          <input type="text" id="connections" name="connections" placeholder="Connections (comma-separated)">
           <button type="submit" class="btn">Add Node</button>
         </form>
       </section>
@@ -35,6 +38,76 @@
       </section>
     </div>
   </main>
+
+  <script>
+    document.getElementById("getLocation").addEventListener("click", () => {
+      const status = document.getElementById("status");
+      const form = document.getElementById("nodeForm");
+
+      const isSecure = location.protocol === "https:" || location.hostname === "localhost";
+
+      if (!isSecure || !navigator.geolocation) {
+        status.textContent = "Using default test location (insecure or unsupported environment).";
+
+        const bestReading = {
+          latitude: 40.7128,
+          longitude: -74.0060,
+          altitude: 15,
+          accuracy: 5,
+          timestamp: new Date().toISOString()
+        };
+
+        autofillForm(bestReading);
+        return;
+      }
+
+      status.textContent = "Collecting multiple readings for best accuracy…";
+
+      let bestReading = null;
+      let readings = 0;
+      const maxReadings = 10;
+
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          readings++;
+
+          const current = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            altitude: pos.coords.altitude ?? "Not available",
+            accuracy: pos.coords.accuracy,
+            timestamp: new Date().toISOString()
+          };
+
+          if (!bestReading || current.accuracy < bestReading.accuracy) {
+            bestReading = current;
+          }
+
+          status.textContent = `Reading ${readings}/${maxReadings} - Accuracy: ±${current.accuracy}m`;
+
+          if (readings >= maxReadings) {
+            navigator.geolocation.clearWatch(watchId);
+
+            status.textContent = `Best location: ${bestReading.latitude}, ${bestReading.longitude}, alt ${bestReading.altitude} (±${bestReading.accuracy}m)`;
+
+            autofillForm(bestReading);
+          }
+        },
+        (err) => {
+          status.textContent = "Unable to get location: " + err.message;
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      );
+    });
+
+    function autofillForm(reading) {
+      const form = document.getElementById("nodeForm");
+      document.getElementById("longitude").value = reading.longitude;
+      document.getElementById("latitude").value = reading.latitude;
+      document.getElementById("altitude").value = reading.altitude;
+      form.style.display = "block";
+    }
+  </script>
 
   <script src="/js/nodes.js"></script>
 </body>

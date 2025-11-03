@@ -22,10 +22,44 @@ window.addEventListener("DOMContentLoaded", () => {
     container: "map",
     style: "mapbox://styles/mapbox/streets-v12",
     center: [BCIT_BURNABY.lng, BCIT_BURNABY.lat],
-    zoom: 15.3,
+    zoom: 18.3,
     pitch: 0,
     bearing: 0,
   });
+
+  // Create a DOM element for the marker
+const el = document.createElement('div');
+el.className = 'marker'; // Apply CSS styling for the marker icon
+el.textContent = '📍'; // or el.innerHTML = '<b>NYC</b>';
+el.style.backgroundImage = 'url(public/data/709699.png)'; // Set custom icon image
+el.style.width = '30px';
+el.style.height = '30px';
+
+const el1 = el.cloneNode(true)
+const el2 = el.cloneNode(true)
+const el3 = el.cloneNode(true)
+const el4 = el.cloneNode(true)
+const el5 = el.cloneNode(true)
+
+// Create the marker and add it to the map
+new mapboxgl.Marker(el)
+    .setLngLat([BCIT_BURNABY.lng - 0.00107, BCIT_BURNABY.lat - 0.000275]) // Marker coordinates
+    .addTo(map);
+new mapboxgl.Marker(el1)
+    .setLngLat([BCIT_BURNABY.lng - 0.00080, BCIT_BURNABY.lat - 0.0003]) // Marker coordinates
+    .addTo(map);
+new mapboxgl.Marker(el2)
+    .setLngLat([BCIT_BURNABY.lng - 0.00107, BCIT_BURNABY.lat - 0.0005]) // Marker coordinates
+    .addTo(map);
+new mapboxgl.Marker(el3)
+    .setLngLat([BCIT_BURNABY.lng - 0.0011, BCIT_BURNABY.lat - 0.00053]) // Marker coordinates
+    .addTo(map);
+new mapboxgl.Marker(el4)
+    .setLngLat([BCIT_BURNABY.lng - 0.0011, BCIT_BURNABY.lat - 0.00085]) // Marker coordinates
+    .addTo(map);
+new mapboxgl.Marker(el5)
+    .setLngLat([BCIT_BURNABY.lng - 0.00055, BCIT_BURNABY.lat - 0.00034]) // Marker coordinates
+    .addTo(map);
 
   map.on("error", (e) => console.error("[BCIT MAP] map error:", e));
 

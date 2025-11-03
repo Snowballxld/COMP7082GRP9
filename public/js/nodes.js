@@ -12,10 +12,10 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
 
     const formData = {
-      name: form.name.value,
-      building: form.building.value,
-      floor: form.floor.value,
-      coordinates: form.coordinates.value
+      long: form.longitude.value,
+      lat: form.latitude.value,
+      alt: form.altitude.value,
+      connections: form.connections.value
     };
 
     try {
