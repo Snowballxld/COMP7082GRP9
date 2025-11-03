@@ -2,16 +2,20 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import { createRequire } from "module";
+import { fileURLToPath } from "url";
+import session from "express-session";
+
 import bcitMapRouter from "./routes/bcitMap.js";
 import route from "./routes/route.js";
-import { fileURLToPath } from "url";
-import { errorHandler } from './middleware/errorHandler.js';
 import nodeRoutes from "./routes/nodes.js";
+import authRouter from './routes/auth.js';
+import favoritesRouter from "./routes/favorites.js";
+import userRoutes from "./routes/users.js";
+
 import { requestLogger } from "./middleware/logger.js";
+import { errorHandler } from './middleware/errorHandler.js';
 import { verifyFirebaseToken } from "./middleware/authMiddleware.js";
 import admin from './config/firebase.js';
-import authRouter from './routes/auth.js';
-import session from "express-session";
 
 console.log('Firebase Admin initialized:', !!admin); // temporary check
 
@@ -25,6 +29,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(express.json());
+app.use(requestLogger);
 
 app.use(session({
   secret: process.env.SESSION_SECRET || "keyboard cat",
@@ -50,16 +55,17 @@ app.use(
 app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
 
-app.use(
-    "/vendor/mapbox-gl",
-    express.static(path.join(process.cwd(), "node_modules/mapbox-gl/dist"))
-)
+// app.use(
+//     "/vendor/mapbox-gl",
+//     express.static(path.join(process.cwd(), "node_modules/mapbox-gl/dist"))
+// )
 app.use('/auth', authRouter);
 app.use("/api/nodes", nodeRoutes);
+app.use("/api/favorites", favoritesRouter);
+app.use("/api/users", userRoutes);
 app.use('/', route);
 
 app.use(errorHandler);
-app.use(requestLogger);
 
 const morgan = require('morgan');
 app.use(morgan(':method :url :status :response-time ms - :date[iso]'));
