@@ -5,6 +5,7 @@ window.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // --- Token setup ---
   const tokenMeta = document.querySelector('meta[name="mapbox-token"]');
   const tokenFromMeta = tokenMeta ? tokenMeta.content : "";
   const token = window.MAPBOX_TOKEN || tokenFromMeta || "";
@@ -12,17 +13,15 @@ window.addEventListener("DOMContentLoaded", () => {
     console.error("[BCIT MAP] Missing Mapbox token.");
     return;
   }
-
   mapboxgl.accessToken = token;
 
+  // --- Map setup ---
   const BCIT_BURNABY = { lng: -123, lat: 49.251 };
   const map = new mapboxgl.Map({
     container: "map",
     style: "mapbox://styles/mapbox/streets-v12",
     center: [BCIT_BURNABY.lng, BCIT_BURNABY.lat],
     zoom: 15.3,
-    pitch: 0,
-    bearing: 0,
   });
 
   map.addControl(new mapboxgl.NavigationControl(), "top-right");
@@ -42,11 +41,13 @@ window.addEventListener("DOMContentLoaded", () => {
     return res.json();
   };
 
-  // Split service strings into separate lines
   const asLines = (v) => {
     if (v == null) return "";
     if (Array.isArray(v))
-      return v.map((x) => String(x).trim()).filter(Boolean).join("<br>");
+      return v
+        .map((x) => String(x).trim())
+        .filter(Boolean)
+        .join("<br>");
     const s = String(v).trim();
     if (!s) return "";
     return s
@@ -56,33 +57,6 @@ window.addEventListener("DOMContentLoaded", () => {
       .join("<br>");
   };
 
-  const roughCenter = (geom) => {
-    try {
-      const coords = [];
-      const collect = (g) => {
-        if (!g) return;
-        const t = g.type;
-        if (t === "Point") coords.push(g.coordinates);
-        else if (t === "MultiPoint" || t === "LineString") coords.push(...g.coordinates);
-        else if (t === "MultiLineString" || t === "Polygon") g.coordinates.forEach((c) => coords.push(...c));
-        else if (t === "MultiPolygon") g.coordinates.forEach((p) => p.forEach((c) => coords.push(...c)));
-        else if (t === "GeometryCollection") g.geometries.forEach(collect);
-      };
-      collect(geom);
-      if (!coords.length) return null;
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      for (const [x, y] of coords) {
-        if (x < minX) minX = x;
-        if (y < minY) minY = y;
-        if (x > maxX) maxX = x;
-        if (y > maxY) maxY = y;
-      }
-      return [(minX + maxX) / 2, (minY + maxY) / 2];
-    } catch {
-      return null;
-    }
-  };
-
   const geometryBounds = (geom) => {
     try {
       const coords = [];
@@ -90,279 +64,143 @@ window.addEventListener("DOMContentLoaded", () => {
         if (!g) return;
         const t = g.type;
         if (t === "Point") coords.push(g.coordinates);
-        else if (t === "MultiPoint" || t === "LineString") coords.push(...g.coordinates);
-        else if (t === "MultiLineString" || t === "Polygon") g.coordinates.forEach((c) => coords.push(...c));
-        else if (t === "MultiPolygon") g.coordinates.forEach((p) => p.forEach((c) => coords.push(...c)));
+        else if (t === "MultiPoint" || t === "LineString")
+          coords.push(...g.coordinates);
+        else if (t === "MultiLineString" || t === "Polygon")
+          g.coordinates.forEach((c) => coords.push(...c));
+        else if (t === "MultiPolygon")
+          g.coordinates.forEach((p) => p.forEach((c) => coords.push(...c)));
         else if (t === "GeometryCollection") g.geometries.forEach(collect);
       };
       collect(geom);
       if (!coords.length) return null;
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity;
       for (const [x, y] of coords) {
         if (x < minX) minX = x;
         if (y < minY) minY = y;
         if (x > maxX) maxX = x;
         if (y > maxY) maxY = y;
       }
-      return [[minX, minY],[maxX, maxY]];
+      return [
+        [minX, minY],
+        [maxX, maxY],
+      ];
     } catch {
       return null;
     }
   };
 
-  // ----------------- Debug Toast (tiny on-map banner) -----------------
-  class DebugToastControl {
-    onAdd(map) {
-      this._map = map;
-      this._el = document.createElement("div");
-      this._el.className = "mapboxgl-ctrl";
-      Object.assign(this._el.style, {
-        background: "rgba(17,24,39,.9)",
-        color: "#fff",
-        padding: "6px 10px",
-        fontSize: "12px",
-        borderRadius: "6px",
-        margin: "10px",
-        maxWidth: "60ch",
-        display: "none",
-      });
-      return this._el;
-    }
-    onRemove() { this._el?.remove(); this._map = null; }
-    show(msg, ms = 2000) {
-      this._el.textContent = msg;
-      this._el.style.display = "";
-      clearTimeout(this._t);
-      this._t = setTimeout(() => (this._el.style.display = "none"), ms);
-    }
-  }
-  const debugToast = new DebugToastControl();
-  map.addControl(debugToast, "top-left");
-
-  // ----------------- Popup builder -----------------
-  const buildPopupHTML = ({ title, buildingAddress, services, floorLabels }) => {
-    const floorsHTML =
-      floorLabels && floorLabels.length
-        ? (() => {
-            const mk = (label) => {
-              const text = buildingAddress
-                ? `${buildingAddress} Floor ${label}`
-                : `Floor ${label}`;
-              return `<a href="#" data-floor="${label}">${text}</a>`;
-            };
-            return mk(floorLabels[0]) + (floorLabels[1] ? ` &nbsp;·&nbsp; ${mk(floorLabels[1])}` : "");
-          })()
-        : "";
-
-    return `
-      <div class="bcit-popup" style="font-family:system-ui;width:360px">
-        <h3 style="margin:0 0 .25rem 0;font-size:1.1rem;font-weight:600;">${title}</h3>
-        <div style="display:flex;gap:.5rem;align-items:center;color:#2563eb;cursor:pointer;user-select:none;">
-          <span data-action="zoom" style="display:inline-flex;align-items:center;gap:.35rem;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <circle cx="11" cy="11" r="7" stroke="#2563eb" stroke-width="2"/>
-              <path d="M20 20l-3.2-3.2" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
-            </svg> Zoom to
-          </span>
-        </div>
-
-        <div style="margin-top:.75rem;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
-          <div style="display:grid;grid-template-columns:38% 62%;">
-            <div style="padding:.55rem .6rem;font-weight:600;background:#f3f4f6;">Building Address</div>
-            <div style="padding:.55rem .6rem;">${buildingAddress || "—"}</div>
-          </div>
-          <div style="display:grid;grid-template-columns:38% 62%;">
-            <div style="padding:.55rem .6rem;font-weight:600;background:#f3f4f6;">Service</div>
-            <div style="padding:.55rem .6rem;">${services || "—"}</div>
-          </div>
-          ${
-            floorLabels && floorLabels.length
-              ? `<div style="display:grid;grid-template-columns:38% 62%;">
-                  <div style="padding:.55rem .6rem;font-weight:600;">Floor Plans</div>
-                  <div style="padding:.55rem .6rem;">${floorsHTML}</div>
-                </div>`
-              : ""
-          }
-        </div>
-      </div>
-    `;
+  const roughCenter = (geom) => {
+    const b = geometryBounds(geom);
+    return b ? [(b[0][0] + b[1][0]) / 2, (b[0][1] + b[1][1]) / 2] : null;
   };
 
-  // ----------------- Floorplan layers -----------------
-  const upsertFloorplanLayers = (data) => {
-    const srcId = "floorplan";
-    if (map.getSource(srcId)) map.getSource(srcId).setData(data);
-    else map.addSource(srcId, { type: "geojson", data });
-
-    if (!map.getLayer("floorplan-fill")) {
-      map.addLayer({
-        id: "floorplan-fill",
-        type: "fill",
-        source: srcId,
-        paint: { "fill-color": "#ef4444", "fill-opacity": 0.25 },
-      });
-    }
-    if (!map.getLayer("floorplan-line")) {
-      map.addLayer({
-        id: "floorplan-line",
-        type: "line",
-        source: srcId,
-        paint: { "line-color": "#b91c1c", "line-width": 1.2 },
-      });
-    }
-
-    try {
-      if (map.getLayer("buildings-line")) {
-        map.moveLayer("floorplan-fill", "buildings-line");
-        map.moveLayer("floorplan-line", "floorplan-fill");
-      }
-    } catch {}
-  };
-
-  // ----------------- Floor Navigator (Prev / Label / Next) -----------------
-  class FloorNavigatorControl {
-    constructor(onSelect) {
-      this._onSelect = onSelect;
-      this._container = null;
-      this._labelEl = null;
-      this._prevBtn = null;
-      this._nextBtn = null;
-      this._floors = [];
-      this._i = -1;
-    }
-    onAdd() {
-      const wrap = document.createElement("div");
-      wrap.className = "mapboxgl-ctrl mapboxgl-ctrl-group";
-      wrap.style.display = "none";
-      wrap.style.alignItems = "center";
-      wrap.style.gap = "4px";
-
-      const prev = document.createElement("button");
-      prev.type = "button";
-      prev.textContent = "◀";
-      prev.title = "Previous floor";
-      prev.onclick = () => this.go(-1);
-
-      const label = document.createElement("span");
-      label.style.padding = "0 8px";
-      label.style.minWidth = "110px";
-      label.style.textAlign = "center";
-      label.style.fontSize = "12px";
-      label.textContent = "Floor: —";
-
-      const next = document.createElement("button");
-      next.type = "button";
-      next.textContent = "▶";
-      next.title = "Next floor";
-      next.onclick = () => this.go(+1);
-
-      wrap.append(prev, label, next);
-
-      this._container = wrap;
-      this._labelEl = label;
-      this._prevBtn = prev;
-      this._nextBtn = next;
-      return wrap;
-    }
-    onRemove() {
-      this._container?.remove();
-      this._container = null;
-    }
-    // Provide new floors (array of labels). Does NOT auto-load; caller decides which to load first.
-    setFloors(floors) {
-      this._floors = Array.isArray(floors) ? [...floors] : [];
-      this._i = this._floors.length ? 0 : -1;
-      this._render();
-    }
-    setActive(label) {
-      const idx = this._floors.indexOf(label);
-      if (idx >= 0) {
-        this._i = idx;
-        this._render();
-      }
-    }
-    go(delta) {
-      if (!this._floors.length) return;
-      const ni = Math.min(this._floors.length - 1, Math.max(0, this._i + delta));
-      if (ni !== this._i) {
-        this._i = ni;
-        this._render();
-        this._onSelect(this._floors[this._i]);
-      }
-    }
-    _render() {
-      if (!this._container) return;
-      const has = this._floors.length > 0;
-      this._container.style.display = has ? "" : "none";
-      if (!has) return;
-      const label = this._floors[this._i] || "—";
-      this._labelEl.textContent = `Floor: ${label}`;
-      this._prevBtn.disabled = this._i <= 0;
-      this._nextBtn.disabled = this._i >= this._floors.length - 1;
-    }
-  }
-
-  // Sort floors numerically: "1","2","3",..., with non-numeric pushed to end
   const sortFloorsBottomFirst = (labels) => {
-    const nums = [], rest = [];
+    const nums = [],
+      rest = [];
     for (const l of labels) {
       const n = parseInt(String(l).trim(), 10);
       Number.isFinite(n) ? nums.push([n, l]) : rest.push(l);
     }
     nums.sort((a, b) => a[0] - b[0]);
-    return [...nums.map(x => x[1]), ...rest];
+    return [...nums.map((x) => x[1]), ...rest];
   };
 
-  let currentFeature = null;
-  let currentFloors = {}; // { label: url }
-  const floorNav = new FloorNavigatorControl(async (label) => {
-    if (currentFeature && currentFloors[label]) {
-      await loadFloorplan(currentFloors[label], label);
-      floorNav.setActive(label);
+  // ----------------- STRONG PDF existence checker -----------------
+  // Some dev servers return 200 + HTML for missing files. We validate by:
+  // - requesting only the first few bytes (Range header)
+  // - ensuring content-type is plausible
+  // - ensuring the magic bytes start with "%PDF-"
+  const _existCache = new Map(); // url -> boolean
+  const pdfExists = async (url) => {
+    if (_existCache.has(url)) return _existCache.get(url);
+    try {
+      // Ask for just the first bytes; many servers will return 206 Partial Content
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Range: "bytes=0-7" },
+        cache: "no-store",
+      });
+
+      // Accept 200 OK (no range support) or 206 Partial Content
+      if (!res.ok && res.status !== 206) {
+        _existCache.set(url, false);
+        return false;
+      }
+
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      // Content-Type can be octet-stream; don't strictly require 'pdf' if magic bytes are correct
+      const buf = await res.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      let sig = "";
+      for (let i = 0; i < Math.min(5, bytes.length); i++)
+        sig += String.fromCharCode(bytes[i]);
+
+      const ok = sig === "%PDF-" || ct.includes("application/pdf");
+      _existCache.set(url, ok);
+      return ok;
+    } catch (e) {
+      _existCache.set(url, false);
+      return false;
     }
-  });
-  map.addControl(floorNav, "top-left");
+  };
 
-const loadFloorplan = async (url, label) => {
-  const bust = url.includes("?") ? `${url}&_=${Date.now()}` : `${url}?_=${Date.now()}`;
-  debugToast.show(`Loading Floor ${label} → ${url}`);
-  console.log("[BCIT MAP] loadFloorplan:", { label, url });
+  const filterExistingPDFs = async (buildingName, floorLabels) => {
+    const code = (buildingName || "").trim();
+    if (!code) return [];
+    const checks = floorLabels.map(async (label) => {
+      const clean = String(label).trim();
+      const url = `/data/floorplans/${code}-Floor${clean}.pdf`;
+      return (await pdfExists(url)) ? { label: clean, pdfUrl: url } : null;
+    });
+    const results = await Promise.all(checks);
+    return results.filter(Boolean);
+  };
 
-  try {
-    const data = await getJSON(bust);
-    if (!data || !data.type) throw new Error("Invalid GeoJSON payload");
+  // ----------------- Popup HTML -----------------
+  const buildPopupHTML = ({ title, buildingAddress, services, floorItems }) => {
+    const floorsHTML =
+      floorItems && floorItems.length
+        ? floorItems
+            .map(
+              ({ label, pdfUrl }) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.45rem .6rem;border-top:1px solid #f1f1f1;">
+          <div style="font-weight:600;">Floor ${label}</div>
+          <a href="${pdfUrl}" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">PDF</a>
+        </div>
+      `
+            )
+            .join("")
+        : `<div style="padding:.55rem .6rem;opacity:.7;">No floor plans found.</div>`;
 
-    // Quick stats
-    const feats = Array.isArray(data.features) ? data.features : [];
-    const byType = feats.reduce((m, f) => {
-      const t = f?.geometry?.type || "Unknown";
-      m[t] = (m[t] || 0) + 1;
-      return m;
-    }, {});
-    console.log("[BCIT MAP] floor stats:", { total: feats.length, byType });
+    return `
+    <div class="bcit-popup" style="font-family:system-ui;width:360px;">
+      <h3 style="margin:0 0 .25rem 0;font-size:1.15rem;font-weight:600;">${title}</h3>
 
-    // Make edges easier to see while debugging
-    upsertFloorplanLayers(data);
-    if (map.getLayer("floorplan-line")) {
-      map.setPaintProperty("floorplan-line", "line-width", 3); // thicker lines
-    }
-    if (map.getLayer("floorplan-fill")) {
-      map.setPaintProperty("floorplan-fill", "fill-opacity", 0.28);
-    }
+      <div style="margin-top:.6rem;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);">
+        <div style="display:grid;grid-template-columns:38% 62%;border-bottom:1px solid #e5e7eb;">
+          <div style="padding:.55rem .6rem;font-weight:600;background:#f9fafb;">Building</div>
+          <div style="padding:.55rem .6rem;">${buildingAddress || "—"}</div>
+        </div>
 
-    floorNav.setActive(label);
-    debugToast.show(`Loaded Floor ${label} • ${feats.length} features (${Object.entries(byType).map(([k,v])=>`${k}:${v}`).join(", ")})`, 2200);
-  } catch (err) {
-    console.warn("[BCIT MAP] failed to load floor:", label, url, err);
-    const src = map.getSource("floorplan");
-    if (src) src.setData({ type: "FeatureCollection", features: [] });
-    floorNav.setActive(label);
-    debugToast.show(`No data for Floor ${label}`, 1800);
-  }
-};
+        <div style="display:grid;grid-template-columns:38% 62%;border-bottom:1px solid #e5e7eb;">
+          <div style="padding:.55rem .6rem;font-weight:600;background:#f9fafb;">Service</div>
+          <div style="padding:.55rem .6rem;">${services || "—"}</div>
+        </div>
 
+        <div>
+          <div style="padding:.55rem .6rem;font-weight:600;background:#f9fafb;border-bottom:1px solid #e5e7eb;">Floor Plans</div>
+          ${floorsHTML}
+        </div>
+      </div>
+    </div>
+  `;
+  };
 
-  // ----------------- Load & handle clicks -----------------
+  // ----------------- Map Load -----------------
   map.on("load", async () => {
     const [buildings, buildingsIndex] = await Promise.all([
       getJSON("/data/bcit-coordinates.geojson"),
@@ -385,104 +223,87 @@ const loadFloorplan = async (url, label) => {
       paint: { "line-color": "#2563eb", "line-width": 1.2 },
     });
 
-    // Hover cursor
-    map.on("mouseenter", "buildings-fill", () => (map.getCanvas().style.cursor = "pointer"));
-    map.on("mouseleave", "buildings-fill", () => (map.getCanvas().style.cursor = ""));
+    map.on(
+      "mouseenter",
+      "buildings-fill",
+      () => (map.getCanvas().style.cursor = "pointer")
+    );
+    map.on(
+      "mouseleave",
+      "buildings-fill",
+      () => (map.getCanvas().style.cursor = "")
+    );
 
-    // Click handler
+    // Highlight layer for selected building
+    const selSrc = "building-selected";
+    if (!map.getSource(selSrc)) {
+      map.addSource(selSrc, {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+      map.addLayer({
+        id: "building-selected-line",
+        type: "line",
+        source: selSrc,
+        paint: { "line-color": "#f59e0b", "line-width": 3 },
+      });
+    }
+
+    // Click → popup to the right (east) of building, only real PDFs listed
     map.on("click", "buildings-fill", async (e) => {
       const f = e.features?.[0];
       if (!f) return;
-      currentFeature = f;
       const p = f.properties || {};
 
-      // Quick highlight of the clicked building
-      const selSrc = "building-selected";
-      if (!map.getSource(selSrc)) {
-        map.addSource(selSrc, { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-        map.addLayer({
-          id: "building-selected-line",
-          type: "line",
-          source: selSrc,
-          paint: { "line-color": "#f59e0b", "line-width": 3 }
-        });
-      }
-      map.getSource(selSrc).setData({ type: "FeatureCollection", features: [f] });
+      map
+        .getSource(selSrc)
+        .setData({ type: "FeatureCollection", features: [f] });
 
       const title =
-        p.BuildingName || p.Display_Name || p.BldgCode || p.SiteName || p.name || "Building";
-
+        p.BuildingName || p.Display_Name || p.SiteName || p.name || "Building";
       const buildingAddress =
-        p.BuildingName || p.Display_Name || p.BldgCode || p.SiteName || "";
-
+        p.BuildingName || p.Display_Name || p.SiteName || "";
       const services = asLines(p.Services || "");
 
-      // Build floor map (optional)
-      currentFloors = {};
-      if (p.floorplans && typeof p.floorplans === "object") {
-        for (const [label, url] of Object.entries(p.floorplans)) if (url) currentFloors[label] = url;
-      } else if (p.BldgCode) {
-        // numeric fallback — extend if you have more levels
-        ["1","2","3","4","5"].forEach((num) => {
-          currentFloors[num] = `/data/floorplans/${p.BldgCode}-Floor${num}.geojson`;
-        });
-      }
-      const floorLabels = sortFloorsBottomFirst(Object.keys(currentFloors));
+      // Consider up to 1..12 floors; filter will keep only existing PDFs
+      let floorLabels =
+        Array.isArray(p.floorLabels) && p.floorLabels.length
+          ? p.floorLabels.map(String)
+          : ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+      floorLabels = sortFloorsBottomFirst(floorLabels);
 
-      // Popup
-      const html = buildPopupHTML({ title, buildingAddress, services, floorLabels });
-      const popup = new mapboxgl.Popup({ anchor: "top", offset: 10, maxWidth: "400px" })
-        .setLngLat(e.lngLat)
+      const floorItems = await filterExistingPDFs(p.BuildingName, floorLabels);
+      const html = buildPopupHTML({
+        title,
+        buildingAddress,
+        services,
+        floorItems,
+      });
+
+      // Position popup to the right of the building
+      const center = roughCenter(f.geometry) || e.lngLat;
+      const offsetMeters = 25;
+      const metersToDegrees =
+        offsetMeters / (111320 * Math.cos((center[1] * Math.PI) / 180));
+      const rightOfShape = [center[0] + metersToDegrees, center[1]];
+
+      new mapboxgl.Popup({
+        anchor: "left",
+        offset: [10, 0],
+        maxWidth: "400px",
+      })
+        .setLngLat(rightOfShape)
         .setHTML(html)
         .addTo(map);
 
-      // Fit to building
-      const bounds = geometryBounds(f.geometry) || null;
+      const bounds = geometryBounds(f.geometry);
       if (bounds) {
         map.fitBounds(bounds, { padding: 60, maxZoom: 19, duration: 800 });
-      } else {
-        const center = roughCenter(f.geometry);
-        if (center) {
-          map.flyTo({ center, zoom: 19, speed: 0.6, curve: 1.4, essential: true });
-        }
       }
-
-      // Floor navigator — start with the lowest available, not always "1"
-      if (floorLabels.length) {
-        const sorted = floorLabels; // already sorted lowest→highest
-        const lowest = sorted[0];
-        floorNav.setFloors(sorted); // no auto-load inside control
-        if (lowest && currentFloors[lowest]) {
-          await loadFloorplan(currentFloors[lowest], lowest);
-        }
-      } else {
-        floorNav.setFloors([]); // hides control
-        const src = map.getSource("floorplan");
-        if (src) src.setData({ type: "FeatureCollection", features: [] });
-      }
-
-      // Popup actions
-      const el = popup.getElement();
-      el.querySelector('[data-action="zoom"]')?.addEventListener("click", () => {
-        const b = geometryBounds(f.geometry);
-        if (b) map.fitBounds(b, { padding: 60, maxZoom: 19, duration: 600 });
-      });
-
-      // Optional: allow clicking the “Floor Plans” links to jump directly
-      el.querySelectorAll("[data-floor]").forEach((a) => {
-        a.addEventListener("click", async (ev) => {
-          ev.preventDefault();
-          const label = a.getAttribute("data-floor");
-          if (label && currentFloors[label]) {
-            await loadFloorplan(currentFloors[label], label);
-            floorNav.setActive(label);
-          }
-        });
-      });
     });
   });
 
-  // ----------------- Search -----------------
+  // ----------------- Simple Search -----------------
   const searchBtn = document.getElementById("searchBtn");
   const searchInput = document.getElementById("searchInput");
 
@@ -492,32 +313,49 @@ const loadFloorplan = async (url, label) => {
     if (!key) return;
 
     if (ix[key]) {
-      map.flyTo({ center: ix[key].center, zoom: 18, speed: 0.6, curve: 1.4, essential: true });
+      map.flyTo({
+        center: ix[key].center,
+        zoom: 18,
+        speed: 0.6,
+        curve: 1.4,
+        essential: true,
+      });
       return;
     }
 
     const src = map.getSource("buildings");
-    if (src && src._data && src._data.features) {
-      const f = src._data.features.find((feat) => {
+    const data = src && src._data;
+    if (data && data.features) {
+      const f = data.features.find((feat) => {
         const p = feat.properties || {};
-        const candidates = [p.BldgCode, p.Display_Name, p.SiteName, p.name, p.code]
-          .filter(Boolean).map((s) => String(s).toUpperCase());
+        const candidates = [
+          p.BuildingName,
+          p.Display_Name,
+          p.SiteName,
+          p.name,
+          p.BldgCode,
+          p.code,
+        ]
+          .filter(Boolean)
+          .map((s) => String(s).toUpperCase());
         return candidates.includes(key);
       });
       if (f) {
-        const center = roughCenter(f.geometry);
-        if (center) {
-          map.flyTo({ center, zoom: 18, speed: 0.6, curve: 1.4, essential: true });
+        const bounds = geometryBounds(f.geometry);
+        if (bounds) {
+          map.fitBounds(bounds, { padding: 60, maxZoom: 19, duration: 600 });
         }
       }
     }
   }
 
-  if (searchBtn) searchBtn.addEventListener("click", () => flyToBuilding(searchInput?.value));
+  if (searchBtn)
+    searchBtn.addEventListener("click", () =>
+      flyToBuilding(searchInput?.value)
+    );
   if (searchInput) {
     searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") flyToBuilding(searchInput.value);
     });
   }
 });
-
