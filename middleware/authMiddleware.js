@@ -30,5 +30,11 @@ export async function verifyFirebaseToken(req, res, next) {
 // Helper to check session for normal page routes
 export function checkSession(req, res, next) {
   if (req.session?.user) return next();
+
+  // JSON if it's an API call
+  if (req.headers.accept?.includes('application/json')) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  
   res.redirect("/auth/login");
 }

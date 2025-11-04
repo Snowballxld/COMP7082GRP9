@@ -41,6 +41,14 @@ router.get('/about', (req, res) => {
   res.render('about', { page: 'about', title: 'Wayfindr – About', user: req.session.user });
 });
 
+// --- Test Logging Route ---
+router.get("/test-error", (req, res, next) => {
+  const testError = new Error("🔥 Intentional test error for logging system auth");
+  testError.statusCode = 500;
+  next(testError); // Passes to errorHandler.js
+});
+
+
 // Catch-all redirect for invalid routes
 
 router.get('*', (req, res) => {
