@@ -40,8 +40,8 @@ export default class User {
   }
 
   async getFavorite(nodeId) {
-    const doc = await this.favoritesRef.doc(nodeId).get();
-    return doc.exists ? doc.data() : null;
+    const snapshot = await this.favoritesRef.orderBy("lastUsed", "desc").get();
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
   // -------------------
