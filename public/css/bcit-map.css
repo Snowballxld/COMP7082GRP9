@@ -33,3 +33,61 @@ html, body {
 .popup {
     font-size: 14px;
 }
+
+/* Map popup card */
+.bcit-popup {
+    font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    width: 360px;
+}
+
+.bcit-popup h3 {
+    margin: 0 0 .25rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.bcit-popup .actions {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    color: #2563eb;
+    cursor: pointer;
+    user-select: none;
+}
+
+.bcit-popup .actions span {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.bcit-popup .grid {
+    margin-top: .75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.bcit-popup .row {
+    display: grid;
+    grid-template-columns: 38% 62%;
+}
+
+.bcit-popup .row>div {
+    padding: .55rem .6rem;
+    font-size: .92rem;
+}
+
+.bcit-popup .row:nth-child(odd) {
+    background: #f3f4f6;
+}
+
+.bcit-popup .key {
+    color: #374151;
+    font-weight: 600;
+}
+
+.bcit-popup a {
+    color: #2563eb;
+    text-decoration: underline;
+}
