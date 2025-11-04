@@ -4,13 +4,15 @@ import cv2
 import matplotlib.pyplot as plt
 
 # === Input/Output Paths ===
-INPUT_DXF = "floorPlans/cleaned_floorplan.dxf"
-OUTPUT_DXF = "floorPlans/se06F1.dxf"
-OUTPUT_NPY = "floorplan_grid.npy"
+BUILDING_CODE = "se06F1"
 
-# === Parameters ===
+folder_path = f"floorPlans/{BUILDING_CODE[:2]}/{BUILDING_CODE[2:4]}/{BUILDING_CODE[4:]}"
+INPUT_DXF = f"{folder_path}/scraped.dxf"
+OUTPUT_DXF = f"{folder_path}/cropped.dxf"
+
+# === Parameters (same as your original script) ===
 scale_factor = 4        # for visualization
-zoom_ratio = 0.90       # keep top 90% vertically
+zoom_ratio = 0.88       # keep top 90% vertically
 zoom_factor = 1.1       # normal zoom-in (1.1 = 10% zoom)
 cell_size = 1           # adjust based on drawing scale
 
@@ -20,7 +22,7 @@ msp = doc.modelspace()
 
 line_data = []
 
-# --- Collect DXF entities ---
+# Collect all geometry
 for e in msp.query("LINE"):
     start, end = e.dxf.start, e.dxf.end
     line_data.append([(start.x, start.y), (end.x, end.y)])
@@ -39,7 +41,7 @@ xs, ys = zip(*all_points)
 min_x, max_x = min(xs), max(xs)
 min_y, max_y = min(ys), max(ys)
 
-# === Step 3: Rasterize for visualization ===
+# === Step 3: Rasterize for visualization (same as before) ===
 width = int((max_x - min_x) / cell_size) + 1
 height = int((max_y - min_y) / cell_size) + 1
 img = np.zeros((height, width), dtype=np.uint8)
@@ -67,7 +69,6 @@ start_y, start_x = (h - new_h) // 2, (w - new_w) // 2
 grid_zoomed_center = grid_zoomed[start_y:start_y + new_h, start_x:start_x + new_w]
 
 # === Step 6: Compute new DXF bounds ===
-# Convert back from pixel crop to DXF coordinates
 y1_dxf = max_y - (start_y + new_h) * cell_size
 y2_dxf = max_y - start_y * cell_size
 x1_dxf = min_x + start_x * cell_size
@@ -78,7 +79,6 @@ new_doc = ezdxf.new(dxfversion="R2010")
 new_msp = new_doc.modelspace()
 
 for poly in line_data:
-    # Keep only lines fully or partially within the crop bounds
     for i in range(len(poly) - 1):
         (x1, y1), (x2, y2) = poly[i], poly[i + 1]
         if (
@@ -90,7 +90,7 @@ for poly in line_data:
 new_doc.saveas(OUTPUT_DXF)
 print(f"[✓] Saved cropped DXF region → {OUTPUT_DXF}")
 
-# === Step 8: Display zoomed region ===
+# === Step 8: Optional display for confirmation ===
 grid_scaled = cv2.resize(
     grid_zoomed_center,
     (grid_zoomed_center.shape[1] * scale_factor, grid_zoomed_center.shape[0] * scale_factor),
@@ -100,7 +100,3 @@ grid_scaled = cv2.resize(
 plt.imshow(grid_scaled, cmap="gray")
 plt.axis("off")
 plt.show()
-
-# === Step 9: Save NumPy version for ML use ===
-np.save(OUTPUT_NPY, grid_zoomed_center)
-print(f"[✓] Saved zoomed grid → {OUTPUT_NPY}")

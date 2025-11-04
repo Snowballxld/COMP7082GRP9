@@ -1,85 +1,106 @@
 #!/usr/bin/env python3
 """
-Multi-floor pathfinder.py — floor files mapped internally
+Multi-floor pathfinder.py — automatically loads floor grids and labels
 """
 
-import sys, os
+import sys, os, json
 import numpy as np
 import heapq
 from collections import deque
 import matplotlib.pyplot as plt
 
+# === CONFIG ===
+BASE_DIR = "floorPlans"
 OUT_DIR = "public"
 
-# --- Grid files per floor ---
-FLOOR_FILES = {
-    1: "floorPlans/se06F1BasicPlan_grid_300x600.txt",
-    2: "floorPlans/se06F2BasicPlan_grid_300x600.txt"
-}
+# --- Load floor data dynamically ---
+def load_floor_data(base_dir, building_code):
+    """
+    Loads all floor grids (.npy) and label positions (.json) in DXF coordinates.
+    Returns:
+        floor_grids: {floor_number: np.ndarray}
+        room_coords: {room_id: (floor_number, (r,c))}
+        stairs: {label: {floor_number: (r,c)}}
+    """
+    floor_grids = {}
+    room_coords = {}
+    stairs = {}
 
-# --- Load grids automatically ---
-def load_grid(path):
-    g = np.loadtxt(path, dtype=int)
-    if g.ndim == 1:
-        g = g[np.newaxis, :]
-    return g
+    building_dir = os.path.join(base_dir, building_code[:2], building_code[2:])
 
-FLOOR_GRIDS = {floor: load_grid(fname) for floor, fname in FLOOR_FILES.items()}
+    for floor_folder in sorted(os.listdir(building_dir)):
+        if not floor_folder.startswith("F"):
+            continue
 
-# --- ROOM_COORDS: (floor, (row, col)) ---
-ROOM_COORDS = {
-    102: (1, (84, 470)),
-    104: (1, (84, 345)),
-    106: (1, (84, 244)),
-    108: (1, (84, 166)),
-    112: (1, (59, 113)),
-    103: (1, (207, 470)),
-    105: (1, (207, 345)),
-    107: (1, (207, 244)),
-    109: (1, (207, 166)),
-    114: (1, (235, 113)),
+        floor_num = int(floor_folder[1:])
+        floor_path = os.path.join(building_dir, floor_folder)
 
-    202: (2, (83, 535)),
-    204: (2, (83, 455)),
-    206: (2, (83, 354)),
-    208: (2, (83, 281)),
-    210: (2, (83, 222)),
-    203: (2, (200, 535)),
-    205: (2, (200, 455)),
-    207: (2, (200, 354)),
-    209: (2, (200, 281)),
-    230: (2, (86, 58)),
-    238: (2, (154, 61))
-}
+        grid_path = os.path.join(floor_path, "floorplan_grid.npy")
+        labels_path = os.path.join(floor_path, "labels.json")
 
-# --- STAIRS connecting floors ---
-STAIRS = {
-    "A": {1: (24, 36), 2: (63, 115)},
-    "B": {1: (140, 559), 2: (141, 576)}
-}
+        if not os.path.exists(grid_path) or not os.path.exists(labels_path):
+            continue
 
-# ---------------- helpers ----------------
+        grid = np.load(grid_path, allow_pickle=True)
+        floor_grids[floor_num] = grid
+
+        # Load label data
+        with open(labels_path, "r") as f:
+            raw_labels = json.load(f)
+
+        # Load meta info to convert DXF → grid coordinates
+        meta_path = os.path.join(floor_path, "meta.json")
+        if not os.path.exists(meta_path):
+            raise FileNotFoundError(f"Missing {meta_path} for coordinate conversion.")
+        with open(meta_path, "r") as f:
+            meta = json.load(f)
+
+        min_x, max_y, cell_size = meta["min_x"], meta["max_y"], meta["cell_size"]
+
+        def to_grid_coords(x, y):
+            """Convert DXF (x,y) to grid (row,col)"""
+            col = int((x - min_x) / cell_size)
+            row = int((max_y - y) / cell_size)
+            return (row, col)
+
+        for item in raw_labels:
+            label = item["label"].strip().lower()
+            gx, gy = item["x"], item["y"]
+            row, col = to_grid_coords(gx, gy)
+
+            if label.startswith("stairs"):
+                stair_name = label.split()[-1].upper()
+                stairs.setdefault(stair_name, {})[floor_num] = (row, col)
+            elif label.replace(" ", "").isdigit():
+                room_id = int(label)
+                room_coords[room_id] = (floor_num, (row, col))
+
+    return floor_grids, room_coords, stairs
+
+
+# === A* pathfinding functions (unchanged) ===
 def heuristic(a, b):
     floor_a, r_a, c_a = a
     floor_b, r_b, c_b = b
     return abs(r_a - r_b) + abs(c_a - c_b) + 10 * abs(floor_a - floor_b)
+
 
 def neighbors(state):
     floor, r, c = state
     grid = FLOOR_GRIDS[floor]
     rows, cols = grid.shape
 
-    # 4-way neighbors
     for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
         nr, nc = r+dr, c+dc
         if 0 <= nr < rows and 0 <= nc < cols and grid[nr, nc] == 0:
             yield (floor, nr, nc)
 
-    # stairs
     for stair, floors in STAIRS.items():
         if floors.get(floor) == (r, c):
-            other_floor = 3 - floor
-            yield (other_floor, floors[other_floor][0], floors[other_floor][1])
+            for other_floor, pos in floors.items():
+                if other_floor != floor:
+                    yield (other_floor, pos[0], pos[1])
+
 
 def astar_multi_floor(start, goal):
     open_heap = []
@@ -112,6 +133,7 @@ def astar_multi_floor(start, goal):
                 counter += 1
     return None
 
+
 def snap_to_free(state):
     floor, r, c = state
     grid = FLOOR_GRIDS[floor]
@@ -130,8 +152,10 @@ def snap_to_free(state):
                 q.append((nr,nc))
     return state
 
+
 def visualize_path(path, start, goal):
-    for floor in [1,2]:
+    os.makedirs(OUT_DIR, exist_ok=True)
+    for floor in sorted(FLOOR_GRIDS.keys()):
         vis = FLOOR_GRIDS[floor].copy().astype(int)
         for f,r,c in path:
             if f == floor:
@@ -144,38 +168,91 @@ def visualize_path(path, start, goal):
         plt.figure(figsize=(8,8 * (vis.shape[0]/vis.shape[1])))
         plt.imshow(vis, cmap='viridis', interpolation='nearest')
         plt.title(f"Floor {floor} path visualization")
-        # plt.colorbar(ticks=[0,1,2,3,4], label='0=free,1=wall,2=path,3=start,4=goal')
         out_path = os.path.join(OUT_DIR, f"floor{floor}_path.png")
         plt.savefig(out_path)
         plt.close()
 
-# ---------------- main ----------------
+
+# === main ===
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: python pathfinder.py <start_floor,start_row,start_col> <goal_room>")
+    if len(sys.argv) != 5:
+        print("Usage: python pathFinding.py <direction> <building_number> <start_floor,x,y> <goal_room>")
         sys.exit(1)
 
-    start_str, room_str = sys.argv[1], sys.argv[2]
-    room_num = int(room_str)
+    direction = sys.argv[1].lower()   # e.g. 'se'
+    building_number = sys.argv[2]     # e.g. '06'
+    start_str = sys.argv[3]           # e.g. '1,735.0,302.0' (DXF coords!)
+    room_str = sys.argv[4]            # e.g. '102'
+
+    building_code = f"{direction}{building_number}"
+    print(f"🗺️ Loading building {building_code}...")
+
+    global FLOOR_GRIDS, ROOM_COORDS, STAIRS
+    FLOOR_GRIDS, ROOM_COORDS, STAIRS = load_floor_data(BASE_DIR, building_code)
+
+    # --- Parse user input ---
+    try:
+        start_floor, start_y, start_x = [float(x) for x in start_str.split(',')]
+        start_floor = int(start_floor)
+    except ValueError:
+        print("❌ Invalid start coordinate format. Use: <floor,x,y> (e.g. 1,735.0,302.0)")
+        sys.exit(1)
+
+    # --- Validate goal room ---
+    try:
+        room_num = int(room_str)
+    except ValueError:
+        print("❌ Invalid room number format.")
+        sys.exit(1)
 
     if room_num not in ROOM_COORDS:
-        print("Unknown room number")
+        print(f"❌ Unknown room number {room_num} in labels.")
         sys.exit(1)
-    
-    start_floor, start_r, start_c = [int(x) for x in start_str.split(',')]
-    start = snap_to_free((start_floor, start_r, start_c))
+
+    # --- Locate meta.json for the same floor as the start ---
+    floor_folder = os.path.join(BASE_DIR, direction, building_number, f"F{start_floor}")
+    meta_path = os.path.join(floor_folder, "meta.json")
+
+    if not os.path.exists(meta_path):
+        raise FileNotFoundError(f"Missing {meta_path} for coordinate conversion.")
+
+    # --- Load metadata for DXF → grid conversion ---
+    with open(meta_path, "r") as f:
+        meta = json.load(f)
+    min_x, max_y, cell_size = meta["min_x"], meta["max_y"], meta["cell_size"]
+
+    # --- Convert DXF → grid coordinates ---
+    start_col = int((start_x - min_x) / cell_size)
+    start_row = int((max_y - start_y) / cell_size)
+
+    # --- Ensure the point is inside grid bounds ---
+    grid = FLOOR_GRIDS[start_floor]
+    start_row = max(0, min(grid.shape[0] - 1, start_row))
+    start_col = max(0, min(grid.shape[1] - 1, start_col))
+
+    start = snap_to_free((start_floor, start_row, start_col))
+
+    # --- Get goal (already in grid coords) ---
     goal_floor, (goal_r, goal_c) = ROOM_COORDS[room_num]
     goal = snap_to_free((goal_floor, goal_r, goal_c))
 
-    print(f"Start -> {start}   Goal -> {goal}")
+    print(f"📍 Start (DXF {start_x:.1f},{start_y:.1f}) → Grid {start}")
+    print(f"🎯 Goal room {room_num} → Grid {goal}")
+
+    # --- Run pathfinding ---
     path = astar_multi_floor(start, goal)
     if not path:
-        print("No path found!")
+        print("❌ No path found!")
         sys.exit(1)
 
-    print(f"Path found: {len(path)} steps")
+    print(f"✅ Path found: {len(path)} steps")
     visualize_path(path, start, goal)
-    print("First 10 path states:", path[:10], "..." if len(path) > 20 else "")
+
+    if len(path) > 20:
+        print("First 10 path states:", path[:10], "...")
+    else:
+        print("Full path:", path)
+
 
 if __name__ == "__main__":
     main()
