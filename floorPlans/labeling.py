@@ -106,3 +106,4 @@ with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
     json.dump(points, f, indent=2)
 
 print(f"\n[✓] Saved {len(points)} labeled points to {OUTPUT_JSON}")
+ 

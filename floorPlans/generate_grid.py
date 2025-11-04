@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import json
 
 # === CONFIG ===
-BUILDING_CODE = "se06F2"
+BUILDING_CODE = "se06F1"
 
 folder_path = f"floorPlans/{BUILDING_CODE[:2]}/{BUILDING_CODE[2:4]}/{BUILDING_CODE[4:]}"
 INPUT_DXF = f"{folder_path}/cleaned.dxf"
@@ -93,3 +93,4 @@ if __name__ == "__main__":
     plt.imshow(grid_scaled, cmap="gray")
     plt.axis("off")
     plt.show()
+ 

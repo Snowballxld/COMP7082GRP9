@@ -100,3 +100,4 @@ grid_scaled = cv2.resize(
 plt.imshow(grid_scaled, cmap="gray")
 plt.axis("off")
 plt.show()
+ 
