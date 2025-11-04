@@ -1,3 +1,4 @@
 node_modules
 .env
 *.log
+logs\\.8d52bee2aa2383472b7011d34fa6447b51e1e050-audit.json
