@@ -28,39 +28,77 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // --- Pull nodes from backend API and render markers ---
-  async function loadNodes() {
-    try {
-      const res = await fetch("/api/nodes/data");
-      if (!res.ok) throw new Error("Failed to load nodes");
+async function loadNodes() {
+  try {
+    const res = await fetch("/api/nodes/data");
+    if (!res.ok) throw new Error("Failed to load nodes");
 
-      const nodes = await res.json();
-      console.log(nodes);
+    const nodes = await res.json();
 
-      nodes.forEach((node) => {
-        if (node.long && node.lat) {
-          const el = document.createElement("div");
-          el.className = "marker";
-          el.textContent = "O";
+    // Step 1: Add node markers
+    const nodeMap = new Map();
+    nodes.forEach((node) => {
+      if (node.long && node.lat) {
+        const el = document.createElement("div");
+        el.className = "marker";
+        el.textContent = "O";
+        new mapboxgl.Marker(el)
+          .setLngLat([parseFloat(node.long), parseFloat(node.lat)])
+          .addTo(map);
 
-          new mapboxgl.Marker(el)
-            .setLngLat([parseFloat(node.long), parseFloat(node.lat)])
-            .setPopup(
-            new mapboxgl.Popup({ offset: 25 })
-              .setHTML(`
-                <strong>${node.name || "Node"}</strong><br>
-                Lat: ${node.lat}<br>
-                Lng: ${node.long}<br>
-                Alt: ${node.alt ?? "N/A"}<br>
-                Connections: ${Array.isArray(node.connections) ? node.connections.join(", ") : "None"}
-              `)
-            )
-            .addTo(map);
-        }
+        nodeMap.set(node.id, [parseFloat(node.long), parseFloat(node.lat)]);
+      }
+    });
+
+    // Step 2: Build GeoJSON for connections
+    const connections = {
+      type: "FeatureCollection",
+      features: [],
+    };
+
+    nodes.forEach((node) => {
+      if (node.connections) {
+        nodeconnections = node.connections.split(',')
+        nodeconnections.forEach((connId) => {
+          const start = nodeMap.get(node.id);
+          const end = nodeMap.get(connId.trim());
+          if (start && end) {
+            connections.features.push({
+              type: "Feature",
+              geometry: {
+                type: "LineString",
+                coordinates: [start, end],
+              },
+            });
+          }
+        });
+      }
+    });
+
+    // Step 3: Add to map
+    if (map.getSource("connections")) {
+      map.getSource("connections").setData(connections);
+    } else {
+      map.addSource("connections", {
+        type: "geojson",
+        data: connections,
       });
-    } catch (err) {
-      console.error("Error loading nodes:", err);
+
+      map.addLayer({
+        id: "connections-line",
+        type: "line",
+        source: "connections",
+        paint: {
+          "line-color": "#FF0000",
+          "line-width": 3,
+        },
+      });
     }
+  } catch (err) {
+    console.error("Error loading nodes:", err);
   }
+}
+
 
   map.on("load", () => {
     loadNodes();
@@ -245,41 +283,4 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-
-// // --- Pull nodes from backend API and render markers ---
-// async function loadNodes() {
-//   try {
-//     const res = await fetch("/api/nodes/data");
-//     if (!res.ok) throw new Error("Failed to load nodes");
-
-//     const nodes = await res.json();
-
-//     console.log(nodes);
-
-//     nodes.forEach(node => {
-//       // Ensure valid coordinates
-//       if (node.long && node.lat) {
-//         const el = document.createElement("div");
-//         el.className = "marker";
-//         el.textContent = "O"; // styleable marker
-
-//         new mapboxgl.Marker(el)
-//           .setLngLat([parseFloat(node.long), parseFloat(node.lat)])
-//           // .setPopup(
-//           //   new mapboxgl.Popup({ offset: 25 })
-//           //     .setHTML(`
-//           //       <strong>${node.name || "Node"}</strong><br>
-//           //       Lat: ${node.lat}<br>
-//           //       Lng: ${node.long}<br>
-//           //       Alt: ${node.alt ?? "N/A"}<br>
-//           //       Connections: ${Array.isArray(node.connections) ? node.connections.join(", ") : "None"}
-//           //     `)
-//           // )
-//           .addTo(map);
-//       }
-//     });
-//   } catch (err) {
-//     console.error("Error loading nodes:", err);
-//   }
-// }
 
