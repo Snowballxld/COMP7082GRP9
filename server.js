@@ -5,16 +5,13 @@ import { createRequire } from "module";
 import { fileURLToPath } from "url";
 import session from "express-session";
 
-import bcitMapRouter from "./routes/bcitMap.js";
 import route from "./routes/route.js";
 import nodeRoutes from "./routes/nodes.js";
 import authRouter from './routes/auth.js';
 import favoritesRouter from "./routes/favorites.js";
-import userRoutes from "./routes/users.js";
 
 import { requestLogger } from "./middleware/logger.js";
 import { errorHandler } from './middleware/errorHandler.js';
-import { verifyFirebaseToken } from "./middleware/authMiddleware.js";
 import admin from './config/firebase.js';
 
 console.log('Firebase Admin initialized:', !!admin); // temporary check
@@ -55,14 +52,9 @@ app.use(
 app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
 
-// app.use(
-//     "/vendor/mapbox-gl",
-//     express.static(path.join(process.cwd(), "node_modules/mapbox-gl/dist"))
-// )
 app.use('/auth', authRouter);
 app.use("/api/nodes", nodeRoutes);
 app.use("/api/favorites", favoritesRouter);
-app.use("/api/users", userRoutes);
 app.use('/', route);
 
 app.use(errorHandler);

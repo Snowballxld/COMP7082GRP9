@@ -29,6 +29,14 @@
         </li>
 
         <li>
+          <% if(page === 'favorites'){ %>
+            <span class="active">Favorites</span>
+          <% } else { %>
+            <a href="/favorites" class="<%= page === 'favorites' ? 'active' : '' %>">Favorites</a>
+          <% } %>
+        </li>
+        
+        <li>
             <% if(page === 'about'){ %>
             <span class="active">About</span>
             <% } else { %>

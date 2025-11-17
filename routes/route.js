@@ -23,12 +23,27 @@ router.get('/nodes', checkSession, (req, res) => {
   res.render('nodes', { page: 'nodes', title: 'Wayfindr – Node Management', user: req.session.user });
 });
 
-router.post('/nodes', checkSession, async (req, res, next) => {
+// POST /nodes → add new node to Firestore
+router.post("/nodes", checkSession, async (req, res) => {
+  let { alt, connections, lat, long } = req.body;
+
+  if (!alt || !connections || !lat || !long) {
+    return res.status(400).json({ error: "Missing fields: alt, connections, lat, long required"});
+  }
+
+  const newNode = {
+    alt,
+    connections,  
+    lat: Number(lat),
+    long: Number(long)
+  };
+
   try {
-    // ... save node
+    await db.collection("nodes").doc(alt).set(newNode);
+    res.status(201).json(newNode);
   } catch (err) {
-    err.statusCode = 400; // e.g., bad input
-    next(err);
+    console.error("Error adding node:", err);
+    res.status(500).json({ error: "Failed to create node" });
   }
 });
 
@@ -40,6 +55,16 @@ router.get('/health', (req, res) => {
 router.get('/about', (req, res) => {
   res.render('about', { page: 'about', title: 'Wayfindr – About', user: req.session.user });
 });
+
+// Favorites Management page
+router.get('/favorites', checkSession, (req, res) => {
+  res.render('favorites', {
+    page: 'favorites',
+    title: 'Wayfindr – Favorites Management',
+    user: req.session.user
+  });
+});
+
 
 // --- Test Logging Route ---
 router.get("/test-error", (req, res, next) => {

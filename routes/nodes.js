@@ -1,50 +1,27 @@
+// routes/nodes.js
+
 import express from "express";
+import admin from "firebase-admin";
 
 const router = express.Router();
+const db = admin.firestore();
 
-// Temporary in-memory data store
-let nodes = [
-  { id: 1, name: "Library", building: "A", floor: "1", coordinates: "10,20" },
-  { id: 2, name: "Cafeteria", building: "B", floor: "2", coordinates: "30,40" }
-];
+// GET /api/nodes → fetch all nodes from Firestore
+router.get("/", async (req, res) => {
+  try {
+    const snapshot = await db.collection("nodes").get();
 
-// GET /nodes
-router.get("/", (req, res) => {
-  const { name, floor } = req.query;
+    const nodes = snapshot.docs.map(doc => ({
+      uid: doc.id,    // Use Firestore doc ID
+      ...doc.data()
+    }));
 
-  let results = nodes;
-
-  if (name) {
-    const regex = new RegExp(name, "i"); // case-insensitive
-    results = results.filter(n => regex.test(n.name));
+    res.json(nodes);
+  } catch (err) {
+    console.error("Error fetching nodes:", err);
+    res.status(500).json({ error: "Failed to load nodes" });
   }
-
-  if (floor) {
-    results = results.filter(n => n.floor === floor);
-  }
-
-  res.json(results);
 });
 
-// POST /nodes
-router.post("/", (req, res) => {
-  const { name, building, floor, coordinates } = req.body;
-
-  if (!name || !building || !floor || !coordinates) {
-    return res.status(400).json({ error: "Missing required fields" });
-  }
-
-  const newNode = {
-    id: nodes.length ? nodes[nodes.length - 1].id + 1 : 1,
-    name,
-    building,
-    floor,
-    coordinates
-  };
-
-  nodes.push(newNode);
-
-  res.status(201).json(newNode);
-});
 
 export default router;

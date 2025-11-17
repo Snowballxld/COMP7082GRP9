@@ -1,60 +1,111 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("nodeForm");
-  const list = document.getElementById("nodesList");
+// public/js/nodes.js
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
 
-  // Fetch existing nodes on page load
-  fetch("/api/nodes")
-    .then(res => res.json())
-    .then(data => renderNodes(data));
+// ------------------------
+// Initialize Firebase
+// ------------------------
+const app = initializeApp(window.firebaseConfig);
+const auth = getAuth(app);
 
-  // Handle form submission
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+// ------------------------
+// Optional login/logout elements (if present)
+// ------------------------
+const loginForm = document.getElementById('loginForm');
+const errorElem = document.getElementById('error');
+const logoutBtn = document.getElementById('logoutBtn');
 
-    const formData = {
-      name: form.name.value,
-      building: form.building.value,
-      floor: form.floor.value,
-      coordinates: form.coordinates.value
-    };
-
-    try {
-      const res = await fetch("/api/nodes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "Error creating node");
-        return;
-      }
-
-      renderNodes([...listData(), data]); // append new node
-      form.reset();
-    } catch (err) {
-      console.error(err);
-      alert("Failed to create node");
-    }
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
+    await fetch('/auth/sessionLogout', { method: 'POST' });
+    localStorage.removeItem('user');
+    logoutBtn.style.display = 'none';
+    if (loginForm) loginForm.style.display = 'block';
+    window.location.href = "/auth/login";
   });
+}
 
-  // Render nodes in the list
-  function renderNodes(nodes) {
+// ------------------------
+// Load all nodes
+// ------------------------
+async function loadNodes() {
+  try {
+    const res = await fetch("/api/nodes");
+    const nodes = await res.json();
+
+    const list = document.getElementById("nodesList");
+    if (!list) return;
+
     list.innerHTML = "";
-    nodes.forEach(n => {
+
+    nodes.forEach(node => {
       const li = document.createElement("li");
-      li.textContent = `${n.name} – ${n.building} – Floor ${n.floor} – ${n.coordinates}`;
+      li.innerHTML = `
+        <strong>${node.alt}</strong>
+        <br>Lat: ${node.lat}, Long: ${node.long}
+        <br>Connections: ${node.connections}
+        <button class="btn-small" data-nodeid="${node.uid}">⭐ Add to Favorites</button>
+      `;
       list.appendChild(li);
     });
-  }
 
-  function listData() {
-    return Array.from(list.children).map(li => {
-      const [name, building, floorCoords] = li.textContent.split(" – ");
-      const [floor, coords] = floorCoords.replace("Floor ", "").split(" – ");
-      return { name, building, floor, coordinates: coords };
-    });
+    attachFavoriteHandlers();
+  } catch (err) {
+    console.error("Failed to load nodes:", err);
   }
+}
+
+// ------------------------
+// Attach favorite buttons
+// ------------------------
+function attachFavoriteHandlers() {
+  document.querySelectorAll("button[data-nodeid]").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      const nodeId = e.target.getAttribute("data-nodeid");
+      await addFavorite(nodeId);
+    });
+  });
+}
+
+// ------------------------
+// Add favorite
+// ------------------------
+async function addFavorite(nodeId) {
+  try {
+    const user = auth.currentUser;
+    if (!user) {
+      alert("Please log in first");
+      return;
+    }
+
+    const token = await user.getIdToken(true);
+
+    const res = await fetch("/api/favorites", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ nodeId })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data.error || "Failed to add favorite");
+      return;
+    }
+
+    console.log("Favorite added:", data.favorite);
+    alert(`Added to favorites!`);
+  } catch (err) {
+    console.error("Network or auth error:", err);
+    alert("Network or auth error while adding favorite");
+  }
+}
+
+// ------------------------
+// Initialize page
+// ------------------------
+auth.onAuthStateChanged(user => {
+  loadNodes();
 });
