@@ -1,5 +1,5 @@
 import express from "express";
-import { showHome, handlePathRequest } from "../controllers/pathfinderController.js";
+import { handlePathRequest } from "../controllers/pathfinderController.js";
 
 const router = express.Router();
 

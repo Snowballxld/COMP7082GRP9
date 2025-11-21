@@ -4,18 +4,31 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export const showHome = (req, res) => {
-    res.render("mapselect");
-};
-
 export const handlePathRequest = (req, res) => {
-    const { start, goal } = req.body;
-    const scriptPath = path.join(__dirname, "../pathFinding.py");
+    const { startBuildingCode, startRoom, goalBuildingCode, goalRoom } = req.body;
 
-    execFile("python3", [scriptPath, start, goal], { cwd: path.join(__dirname, "../") }, (err, stdout, stderr) => {
+    const startDirection = startBuildingCode.slice(0, 2).toLowerCase();
+    const startNumber = startBuildingCode.slice(2);
+
+    const goalDirection = goalBuildingCode.slice(0, 2).toLowerCase();
+    const goalNumber = goalBuildingCode.slice(2);
+    const scriptPath = path.join(__dirname, "/pathFindingRoom.py");
+
+    const scriptArgs = [
+        startDirection,
+        startNumber,
+        startRoom,
+        goalDirection,
+        goalNumber,
+        goalRoom
+    ];
+
+
+    execFile("python3", [scriptPath, ...scriptArgs], { cwd: path.join(__dirname, "../") }, (err, stdout, stderr) => {
         if (err) {
             console.error(stderr);
-            return res.render("result", { output: `Error running pathfinder: ${stderr}`, showImages: false });
+            const errorOutput = `Error running pathfinder: ${stderr}\nExecuted: python3 ${scriptPath} ${scriptArgs.join(' ')}`;
+            return res.render("result", { output: errorOutput, showImages: false, title: 'Building Map Navigator – Error' });
         }
 
         res.render("result", {
