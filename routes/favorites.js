@@ -1,100 +1,92 @@
+// routes/favorites.js
+
 import express from "express";
 import admin from "../config/firebase.js";
+import User from "../models/user.js";
 import { verifyFirebaseToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Get all favorites, ordered by lastUsed descending
-router.get("/", verifyFirebaseToken, async (req, res) => {
+// Middleware to ensure Firestore user doc exists and attach User instance
+async function ensureUserDoc(req, res, next) {
   try {
-    const uid = req.user.uid;
-    const snapshot = await admin
-      .firestore()
-      .collection("users")
-      .doc(uid)
-      .collection("favorites")
-      .orderBy("lastUsed", "desc")
-      .get();
+    const uid = req.user?.uid;
+    if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
-    const favorites = snapshot.docs.map(doc => doc.data());
+    const user = new User(uid);
+    // If we have some basic email info from token, pass it
+    await user.ensureExists({ email: req.user.email || null, displayName: req.user.name || null });
+
+    req.userModel = user;
+    next();
+  } catch (err) {
+    console.error("ensureUserDoc error:", err);
+    next(err);
+  }
+}
+
+
+/**
+ * GET /api/favorites
+ * Return favorites ordered by lastUsed desc
+ */
+router.get("/", verifyFirebaseToken, ensureUserDoc, async (req, res, next) => {
+  try {
+    const favorites = await req.userModel.getFavorites();
     res.json({ favorites });
   } catch (err) {
-    console.error("Error fetching favorites:", err);
-    res.status(500).json({ error: "Failed to fetch favorites" });
+    next(err);
   }
 });
 
-// Add a favorite
-router.post("/", verifyFirebaseToken, async (req, res) => {
+/**
+ * POST /api/favorites
+ * Body: { nodeId, label?, isKeyLocation?, nodeMeta? }
+ */
+router.post("/", verifyFirebaseToken, ensureUserDoc, async (req, res, next) => {
   try {
-    const uid = req.user.uid;
-    const { nodeId } = req.body;
-    if (!nodeId) return res.status(400).json({ error: "nodeId required" });
+    const { nodeId, label, isKeyLocation = false, nodeMeta = {} } = req.body;
+    if (!nodeId) return res.status(400).json({ error: "nodeId is required" });
 
-    const favoriteRef = admin
-      .firestore()
-      .collection("users")
-      .doc(uid)
-      .collection("favorites")
-      .doc(nodeId);
+    const result = await req.userModel.addFavorite(nodeId, { label, isKeyLocation, nodeMeta });
+  
+    const fav = await req.userModel.getFavorite(nodeId);
 
-    const now = admin.firestore.Timestamp.now();
+    res.status(201).json({ favorite: fav });
 
-    await favoriteRef.set({
-      nodeId,
-      addedAt: now,
-      lastUsed: now
-    });
-
-    res.json({ message: "Favorite added", nodeId });
   } catch (err) {
-    console.error("Error adding favorite:", err);
-    res.status(500).json({ error: "Failed to add favorite" });
+    console.error("Error in POST /api/favorites:", err);
+    next(err);
   }
 });
 
-// Update lastUsed for a favorite (mark as used)
-router.patch("/:nodeId/use", verifyFirebaseToken, async (req, res) => {
+
+
+/**
+ * PATCH /api/favorites/:nodeId/use
+ * Mark as used (updates lastUsed)
+ */
+router.patch("/:nodeId/use", verifyFirebaseToken, ensureUserDoc, async (req, res, next) => {
   try {
-    const uid = req.user.uid;
     const { nodeId } = req.params;
-
-    const favoriteRef = admin
-      .firestore()
-      .collection("users")
-      .doc(uid)
-      .collection("favorites")
-      .doc(nodeId);
-
-    await favoriteRef.update({
-      lastUsed: admin.firestore.Timestamp.now()
-    });
-
-    res.json({ message: "Favorite lastUsed updated", nodeId });
+    await req.userModel.markFavoriteUsed(nodeId);
+    const fav = await req.userModel.getFavorite(nodeId);
+    res.json({ favorite: fav });
   } catch (err) {
-    console.error("Error updating favorite:", err);
-    res.status(500).json({ error: "Failed to update favorite" });
+    next(err);
   }
 });
 
-// Remove a favorite
-router.delete("/:nodeId", verifyFirebaseToken, async (req, res) => {
+/**
+ * DELETE /api/favorites/:nodeId
+ */
+router.delete("/:nodeId", verifyFirebaseToken, ensureUserDoc, async (req, res, next) => {
   try {
-    const uid = req.user.uid;
     const { nodeId } = req.params;
-
-    await admin
-      .firestore()
-      .collection("users")
-      .doc(uid)
-      .collection("favorites")
-      .doc(nodeId)
-      .delete();
-
+    await req.userModel.removeFavorite(nodeId);
     res.json({ message: "Favorite removed", nodeId });
   } catch (err) {
-    console.error("Error deleting favorite:", err);
-    res.status(500).json({ error: "Failed to remove favorite" });
+    next(err);
   }
 });
 

@@ -1,6 +1,12 @@
 // routes/nodes.js
-import express from "express";
+<<<<<<< HEAD
+=======
 
+>>>>>>> 488e05d02c276a233bac9773886b3338c6b9c944
+import express from "express";
+import admin from "firebase-admin";
+
+<<<<<<< HEAD
 export default function nodeRoutes(db) {
   const router = express.Router();
 
@@ -40,3 +46,27 @@ export default function nodeRoutes(db) {
 
   return router;
 }
+=======
+const router = express.Router();
+const db = admin.firestore();
+
+// GET /api/nodes → fetch all nodes from Firestore
+router.get("/", async (req, res) => {
+  try {
+    const snapshot = await db.collection("nodes").get();
+
+    const nodes = snapshot.docs.map(doc => ({
+      uid: doc.id,    // Use Firestore doc ID
+      ...doc.data()
+    }));
+
+    res.json(nodes);
+  } catch (err) {
+    console.error("Error fetching nodes:", err);
+    res.status(500).json({ error: "Failed to load nodes" });
+  }
+});
+
+
+export default router;
+>>>>>>> 488e05d02c276a233bac9773886b3338c6b9c944

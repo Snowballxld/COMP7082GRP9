@@ -1,3 +1,5 @@
+// config/firebase.js
+
 import admin from "firebase-admin";
 import dotenv from "dotenv";
 
