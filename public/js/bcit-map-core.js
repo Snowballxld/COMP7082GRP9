@@ -1,4 +1,4 @@
-// public/js/bcit-map.js
+// public/js/bcit-map-core.js
 window.addEventListener("DOMContentLoaded", () => {
   if (!window.mapboxgl) {
     console.error("[BCIT MAP] Mapbox GL JS failed to load.");
@@ -34,7 +34,7 @@ window.addEventListener("DOMContentLoaded", () => {
     "top-right"
   );
 
-  // ----------------- Helpers -----------------
+  // ----------------- Shared helpers (exported to plugins) -----------------
   const getJSON = async (url) => {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
@@ -99,40 +99,33 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   const sortFloorsBottomFirst = (labels) => {
-    const nums = [],
-      rest = [];
+    const nums = [];
+    const rest = [];
     for (const l of labels) {
       const n = parseInt(String(l).trim(), 10);
-      Number.isFinite(n) ? nums.push([n, l]) : rest.push(l);
+      if (Number.isFinite(n)) nums.push([n, l]);
+      else rest.push(l);
     }
     nums.sort((a, b) => a[0] - b[0]);
     return [...nums.map((x) => x[1]), ...rest];
   };
 
-  // ----------------- STRONG PDF existence checker -----------------
-  // Some dev servers return 200 + HTML for missing files. We validate by:
-  // - requesting only the first few bytes (Range header)
-  // - ensuring content-type is plausible
-  // - ensuring the magic bytes start with "%PDF-"
   const _existCache = new Map(); // url -> boolean
   const pdfExists = async (url) => {
     if (_existCache.has(url)) return _existCache.get(url);
     try {
-      // Ask for just the first bytes; many servers will return 206 Partial Content
       const res = await fetch(url, {
         method: "GET",
         headers: { Range: "bytes=0-7" },
         cache: "no-store",
       });
 
-      // Accept 200 OK (no range support) or 206 Partial Content
       if (!res.ok && res.status !== 206) {
         _existCache.set(url, false);
         return false;
       }
 
       const ct = (res.headers.get("content-type") || "").toLowerCase();
-      // Content-Type can be octet-stream; don't strictly require 'pdf' if magic bytes are correct
       const buf = await res.arrayBuffer();
       const bytes = new Uint8Array(buf);
       let sig = "";
@@ -160,7 +153,6 @@ window.addEventListener("DOMContentLoaded", () => {
     return results.filter(Boolean);
   };
 
-  // ----------------- Popup HTML -----------------
   const buildPopupHTML = ({ title, buildingAddress, services, floorItems }) => {
     const floorsHTML =
       floorItems && floorItems.length
@@ -200,7 +192,7 @@ window.addEventListener("DOMContentLoaded", () => {
   `;
   };
 
-  // ----------------- Map Load -----------------
+  // ----------------- Map load + building layers -----------------
   map.on("load", async () => {
     const [buildings, buildingsIndex] = await Promise.all([
       getJSON("/data/bcit-coordinates.geojson"),
@@ -234,7 +226,7 @@ window.addEventListener("DOMContentLoaded", () => {
       () => (map.getCanvas().style.cursor = "")
     );
 
-    // Highlight layer for selected building
+    // Highlight source/layer for selected building
     const selSrc = "building-selected";
     if (!map.getSource(selSrc)) {
       map.addSource(selSrc, {
@@ -249,113 +241,27 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Click → popup to the right (east) of building, only real PDFs listed
-    map.on("click", "buildings-fill", async (e) => {
-      const f = e.features?.[0];
-      if (!f) return;
-      const p = f.properties || {};
+    // Expose map + utils if needed
+    const utils = {
+      getJSON,
+      asLines,
+      geometryBounds,
+      roughCenter,
+      sortFloorsBottomFirst,
+      pdfExists,
+      filterExistingPDFs,
+      buildPopupHTML,
+    };
+    window.BCITMap = { map, utils };
 
-      map
-        .getSource(selSrc)
-        .setData({ type: "FeatureCollection", features: [f] });
-
-      const title =
-        p.BuildingName || p.Display_Name || p.SiteName || p.name || "Building";
-      const buildingAddress =
-        p.BuildingName || p.Display_Name || p.SiteName || "";
-      const services = asLines(p.Services || "");
-
-      // Consider up to 1..12 floors; filter will keep only existing PDFs
-      let floorLabels =
-        Array.isArray(p.floorLabels) && p.floorLabels.length
-          ? p.floorLabels.map(String)
-          : ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
-      floorLabels = sortFloorsBottomFirst(floorLabels);
-
-      const floorItems = await filterExistingPDFs(p.BuildingName, floorLabels);
-      const html = buildPopupHTML({
-        title,
-        buildingAddress,
-        services,
-        floorItems,
-      });
-
-      // Position popup to the right of the building
-      const center = roughCenter(f.geometry) || e.lngLat;
-      const offsetMeters = 10;
-      const metersToDegrees =
-        offsetMeters / (111320 * Math.cos((center[1] * Math.PI) / 180));
-      const rightOfShape = [center[0] + metersToDegrees, center[1]];
-
-      new mapboxgl.Popup({
-        anchor: "left",
-        offset: [10, 0],
-        maxWidth: "400px",
-      })
-        .setLngLat(rightOfShape)
-        .setHTML(html)
-        .addTo(map);
-
-      const bounds = geometryBounds(f.geometry);
-      if (bounds) {
-        map.fitBounds(bounds, { padding: 60, maxZoom: 19, duration: 800 });
+    // Run plugins
+    const plugins = window.BCITMapPlugins || [];
+    plugins.forEach((fn) => {
+      try {
+        fn(map, utils);
+      } catch (err) {
+        console.error("[BCIT MAP] Plugin error:", err);
       }
     });
   });
-
-  // ----------------- Simple Search -----------------
-  const searchBtn = document.getElementById("searchBtn");
-  const searchInput = document.getElementById("searchInput");
-
-  function flyToBuilding(code) {
-    const key = (code || "").trim().toUpperCase();
-    const ix = window.__BUILDINGS_INDEX__ || {};
-    if (!key) return;
-
-    if (ix[key]) {
-      map.flyTo({
-        center: ix[key].center,
-        zoom: 18,
-        speed: 0.6,
-        curve: 1.4,
-        essential: true,
-      });
-      return;
-    }
-
-    const src = map.getSource("buildings");
-    const data = src && src._data;
-    if (data && data.features) {
-      const f = data.features.find((feat) => {
-        const p = feat.properties || {};
-        const candidates = [
-          p.BuildingName,
-          p.Display_Name,
-          p.SiteName,
-          p.name,
-          p.BldgCode,
-          p.code,
-        ]
-          .filter(Boolean)
-          .map((s) => String(s).toUpperCase());
-        return candidates.includes(key);
-      });
-      if (f) {
-        const bounds = geometryBounds(f.geometry);
-        if (bounds) {
-          map.fitBounds(bounds, { padding: 60, maxZoom: 19, duration: 600 });
-        }
-      }
-    }
-  }
-
-  if (searchBtn)
-    searchBtn.addEventListener("click", () =>
-      flyToBuilding(searchInput?.value)
-    );
-  if (searchInput) {
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") flyToBuilding(searchInput.value);
-    });
-  }
 });

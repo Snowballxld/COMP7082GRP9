@@ -27,9 +27,15 @@
 
   <script defer src="/vendor/mapbox-gl/mapbox-gl.js"></script>
 
-    <!-- Provide token globally -->
+  <!-- Provide token globally -->
   <script defer>window.MAPBOX_TOKEN = "<%- MAPBOX_TOKEN %>";</script>
-  <script defer src="/js/bcit-map.js"></script>
+
+  <!-- Plugins register themselves first -->
+  <script defer src="/js/bcit-map-floors.js"></script>
+  <script defer src="/js/bcit-map-search.js"></script>
+
+  <!-- Core script creates the map and runs plugins -->
+  <script defer src="/js/bcit-map-core.js"></script>
 
 </body>
 
