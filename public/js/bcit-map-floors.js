@@ -18,6 +18,7 @@
     const SEL_SRC = "building-selected";
 
     let currentBuildingCode = null;
+    let roomPopup = null;
 
     if (!map.getSource(FLOOR_SRC)) {
       map.addSource(FLOOR_SRC, {
@@ -46,6 +47,13 @@
       });
     }
 
+    const clearRoomPopup = () => {
+      if (roomPopup) {
+        roomPopup.remove();
+        roomPopup = null;
+      }
+    };
+
     const clearFloorView = () => {
       currentBuildingCode = null;
 
@@ -65,6 +73,8 @@
       if (sel) {
         sel.setData({ type: "FeatureCollection", features: [] });
       }
+
+      clearRoomPopup();
     };
 
     const hideBuildingShape = (buildingFeature) => {
@@ -118,17 +128,90 @@
       }
     });
 
-    // Rooms clickable → zoom to room
+    // -------- Rooms clickable → zoom + popup with room info --------
     map.on("click", FLOOR_FILL_LAYER, (e) => {
-      const f = e.features?.[0];
-      if (!f) return;
-      const bounds = geometryBounds(f.geometry);
-      if (bounds) {
+    const f = e.features?.[0];
+    if (!f) return;
+
+    const props = f.properties || {};
+    const room =
+        props.room || props.Room || props.name || props.id || "Room";
+    const building =
+        props.building || props.Building || props.BuildingName || "";
+    const floor = props.floor || props.Floor || "";
+
+    // NEW: type from GeoJSON (room / stairs)
+    const rawType = (props.type || props.Type || "").toLowerCase();
+    let typeLabel = "";
+    if (rawType === "stairs") typeLabel = "Stairs";
+    else if (rawType === "room") typeLabel = "Room";
+
+    // Zoom to room
+    const bounds = geometryBounds(f.geometry);
+    if (bounds) {
         map.fitBounds(bounds, { padding: 40, maxZoom: 20, duration: 500 });
-      }
+    }
+
+    // Where to put the popup
+    const center = roughCenter(f.geometry) || e.lngLat;
+
+    // Payload for navigation hook
+    const navPayload = {
+        building: String(building || "").trim(),
+        floor: String(floor || "").trim(),
+        room: String(room || "").trim(),
+    };
+    const payloadStr = JSON.stringify(navPayload).replace(/"/g, "&quot;");
+
+    const labelParts = [];
+    if (navPayload.building) labelParts.push(navPayload.building);
+    if (navPayload.floor) labelParts.push(`Floor ${navPayload.floor}`);
+    const subtitle = labelParts.join(" · ");
+
+    const html = `
+        <div style="font-family:system-ui;min-width:200px;">
+        <div style="font-weight:600;font-size:1rem;margin-bottom:.25rem;">
+            ${room}
+        </div>
+        ${
+            subtitle
+            ? `<div style="font-size:.85rem;color:#4b5563;margin-bottom:.1rem;">${subtitle}</div>`
+            : ""
+        }
+        ${
+            typeLabel
+            ? `<div style="font-size:.8rem;color:#6b7280;margin-bottom:.5rem;">Type: <strong>${typeLabel}</strong></div>`
+            : ""
+        }
+        <button
+            style="
+            padding:.35rem .65rem;
+            border-radius:6px;
+            border:1px solid #2563eb;
+            background:#2563eb;
+            color:white;
+            font-size:.85rem;
+            cursor:pointer;
+            "
+            onclick="window.BCITMap && window.BCITMap.navigateToRoom && window.BCITMap.navigateToRoom(${payloadStr});">
+            Navigate to this ${typeLabel || "room"}
+        </button>
+        </div>
+    `;
+
+    clearRoomPopup();
+    roomPopup = new mapboxgl.Popup({
+        closeOnClick: true,
+        offset: [0, -6],
+        maxWidth: "260px",
+    })
+        .setLngLat(center)
+        .setHTML(html)
+        .addTo(map);
     });
 
-    // Building click → show floor geometry
+
+    // -------- Building click → show floor geometry --------
     map.on("click", "buildings-fill", async (e) => {
       const f = e.features?.[0];
       if (!f) return;
@@ -181,7 +264,7 @@
       floorLabels = sortFloorsBottomFirst(floorLabels);
 
       const floorItems = await filterExistingPDFs(p.BuildingName, floorLabels);
-      const html = buildPopupHTML({
+      const htmlPopup = buildPopupHTML({
         title,
         buildingAddress,
         services,
@@ -200,7 +283,7 @@
         maxWidth: "400px",
       })
         .setLngLat(rightOfShape)
-        .setHTML(html)
+        .setHTML(htmlPopup)
         .addTo(map);
       */
     });

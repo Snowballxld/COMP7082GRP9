@@ -7,7 +7,8 @@
         "id": 1,
         "room": "SW3-1602",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -111,7 +112,8 @@
         "id": 2,
         "room": "SW3-1710",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -231,7 +233,8 @@
         "id": 3,
         "room": "SW3-1750",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -315,7 +318,8 @@
         "id": 4,
         "room": "SW3-1605",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -363,7 +367,8 @@
         "id": 5,
         "room": "SW3-1615",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -399,7 +404,8 @@
         "id": 6,
         "room": "SW3-1625",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -435,7 +441,8 @@
         "id": 7,
         "room": "SW3-1635",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -535,7 +542,8 @@
         "id": 8,
         "room": "SW3-1655",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -607,7 +615,8 @@
         "id": 9,
         "room": "SW3-1695",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -667,7 +676,8 @@
         "id": 10,
         "room": "SW3-1640",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -703,7 +713,8 @@
         "id": 11,
         "room": "SW3-1650",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -763,7 +774,8 @@
         "id": 12,
         "room": "SW3-1660",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -807,7 +819,8 @@
         "id": 13,
         "room": "SW3-1658",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -851,7 +864,8 @@
         "id": 14,
         "room": "SW3-1654",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -911,7 +925,8 @@
         "id": 15,
         "room": "SW3-1656",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -967,7 +982,8 @@
         "id": 16,
         "room": "SW3-1690",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1047,7 +1063,8 @@
         "id": 17,
         "room": "SW3-1696",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1091,7 +1108,8 @@
         "id": 18,
         "room": "SW3-S160",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "stairs"
       },
       "geometry": {
         "type": "Polygon",
@@ -1155,7 +1173,8 @@
         "id": 19,
         "room": "SW3-1730",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1203,7 +1222,8 @@
         "id": 20,
         "room": "SW3-1915",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1363,7 +1383,8 @@
         "id": 21,
         "room": "SW3-1945",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1399,7 +1420,8 @@
         "id": 22,
         "room": "SW3-1965",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1435,7 +1457,8 @@
         "id": 23,
         "room": "SW3-1955",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1471,7 +1494,8 @@
         "id": 24,
         "room": "SW1-1975",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "stairs"
       },
       "geometry": {
         "type": "Polygon",
@@ -1507,7 +1531,8 @@
         "id": 25,
         "room": "SW3-1920",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1587,7 +1612,8 @@
         "id": 26,
         "room": "SW3-1610",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1659,7 +1685,8 @@
         "id": 27,
         "room": "SW3-1620",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1735,7 +1762,8 @@
         "id": 28,
         "room": "SW3-1985",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1771,7 +1799,8 @@
         "id": 29,
         "room": "SW3-1990",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1807,7 +1836,8 @@
         "id": 30,
         "room": "SW3-1950",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1843,7 +1873,8 @@
         "id": 31,
         "room": "SW3-S190",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "stairs"
       },
       "geometry": {
         "type": "Polygon",
@@ -1879,7 +1910,8 @@
         "id": 32,
         "room": "SW3-1924",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1915,7 +1947,8 @@
         "id": 33,
         "room": "SW3-1910",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -1951,7 +1984,8 @@
         "id": 34,
         "room": "SW3-S180",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "stairs"
       },
       "geometry": {
         "type": "Polygon",
@@ -1987,7 +2021,8 @@
         "id": 35,
         "room": "SW3-1700",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -2023,7 +2058,8 @@
         "id": 36,
         "room": "SW3-1604",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
@@ -2059,7 +2095,8 @@
         "id": 37,
         "room": "SW3-S170",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "stairs"
       },
       "geometry": {
         "type": "Polygon",
@@ -2095,7 +2132,8 @@
         "id": 38,
         "room": "SW3-1642",
         "building": "SW3",
-        "floor": "1"
+        "floor": "1",
+        "type": "room"
       },
       "geometry": {
         "type": "Polygon",
