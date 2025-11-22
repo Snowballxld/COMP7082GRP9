@@ -1,93 +1,117 @@
-html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    font-family: sans-serif;
+/* Make sure the page can give height to the map */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
+/* The Mapbox container – THIS NEEDS HEIGHT */
 #map {
-    width: 100%;
-    height: 100vh;
+  position: relative;        /* so the search/floor panel position correctly */
+  width: 100%;
+  height: calc(100vh - 140px); /* adjust 140px if your header is taller/shorter */
+  /* or just use height: 100vh; if you want full screen */
 }
 
-#search-box {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: white;
-    padding: 6px 8px;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    z-index: 1;
+/* --- Search container (already inside #map) --- */
+.map-search {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 30;
+  background: #ffffff;
+  border-radius: 999px;        /* pill-style like Google Maps */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
 }
 
-#search-box input {
-    padding: 4px 6px;
+/* input inside the pill */
+.map-search input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  min-width: 220px;
 }
 
-#search-box button {
-    padding: 4px 8px;
-    margin-left: 4px;
+/* 'Go' button – small circle on right */
+.map-search button {
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.popup {
-    font-size: 14px;
+.map-search button:hover {
+  background: #1d4ed8;
 }
 
-/* Map popup card */
-.bcit-popup {
-    font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
-    width: 360px;
+/* --- Suggestions dropdown --- */
+.map-search-suggestions {
+  position: absolute;
+  top: 46px;                 /* just below the pill bar */
+  left: 10px;
+  z-index: 31;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  padding: 4px 0;
+  min-width: 280px;
+  max-width: 340px;
+  max-height: 260px;
+  overflow-y: auto;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-size: 14px;
+  display: none;             /* toggled by JS */
 }
 
-.bcit-popup h3 {
-    margin: 0 0 .25rem 0;
-    font-size: 1.1rem;
-    font-weight: 600;
+/* each suggestion row */
+.map-search-suggestion {
+  padding: 6px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
 }
 
-.bcit-popup .actions {
-    display: flex;
-    gap: .5rem;
-    align-items: center;
-    color: #2563eb;
-    cursor: pointer;
-    user-select: none;
+.map-search-suggestion:hover,
+.map-search-suggestion.is-active {
+  background: #e5f0ff;
 }
 
-.bcit-popup .actions span {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
+/* main line: name */
+.map-search-suggestion-title {
+  font-weight: 500;
+  color: #111827;
 }
 
-.bcit-popup .grid {
-    margin-top: .75rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    overflow: hidden;
+/* sub line: type / extra info */
+.map-search-suggestion-sub {
+  font-size: 12px;
+  color: #6b7280;
 }
 
-.bcit-popup .row {
-    display: grid;
-    grid-template-columns: 38% 62%;
+/* small section label (Buildings / Rooms) */
+.map-search-suggestion-section {
+  padding: 6px 12px 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
 }
 
-.bcit-popup .row>div {
-    padding: .55rem .6rem;
-    font-size: .92rem;
-}
 
-.bcit-popup .row:nth-child(odd) {
-    background: #f3f4f6;
-}
-
-.bcit-popup .key {
-    color: #374151;
-    font-weight: 600;
-}
-
-.bcit-popup a {
-    color: #2563eb;
-    text-decoration: underline;
+/* Floor panel (from bcit-map-floors.js) – make sure it sits below the search bar */
+#bcit-floor-panel {
+  top: 52px !important; /* directly under search bar */
+  left: 10px;
 }

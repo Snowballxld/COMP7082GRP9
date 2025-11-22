@@ -113,7 +113,7 @@
     const floorPanel = document.createElement("div");
     floorPanel.id = "bcit-floor-panel";
     floorPanel.style.position = "absolute";
-    floorPanel.style.top = "10px";
+    floorPanel.style.top = "52px";
     floorPanel.style.left = "10px";
     floorPanel.style.background = "white";
     floorPanel.style.borderRadius = "8px";

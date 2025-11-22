@@ -2,20 +2,25 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BCIT Campus Map</title>
   <meta name="mapbox-token" content="<%- MAPBOX_TOKEN %>">
-  <link href="/vendor/mapbox-gl/mapbox-gl.css" rel="stylesheet">
-  <link rel="stylesheet" href="/css/bcit-map.css">
+  <link href="/vendor/mapbox-gl/mapbox-gl.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/bcit-map.css" />
 </head>
 
 <body>
-  <div id="map"></div>
-
-  <div class="map-search">
-    <input id="searchInput" type="text" placeholder="Search building (e.g., SE12)">
-    <button id="searchBtn">Go</button>
+  <div id="map">
+    <!-- SEARCH BAR INSIDE MAP, TOP-LEFT -->
+    <div class="map-search">
+      <input
+        id="searchInput"
+        type="text"
+        placeholder="Search building or room (e.g., SW3 or SW3-1635)"
+      />
+      <button id="searchBtn">Go</button>
+    </div>
   </div>
 
   <div id="legend">
@@ -26,17 +31,12 @@
   </div>
 
   <script defer src="/vendor/mapbox-gl/mapbox-gl.js"></script>
-
-  <!-- Provide token globally -->
   <script defer>window.MAPBOX_TOKEN = "<%- MAPBOX_TOKEN %>";</script>
 
-  <!-- Plugins register themselves first -->
+  <!-- core map setup + plugins -->
+  <script defer src="/js/bcit-map-core.js"></script>
   <script defer src="/js/bcit-map-floors.js"></script>
   <script defer src="/js/bcit-map-search.js"></script>
-
-  <!-- Core script creates the map and runs plugins -->
-  <script defer src="/js/bcit-map-core.js"></script>
-
 </body>
 
 </html>
