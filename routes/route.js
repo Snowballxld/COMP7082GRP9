@@ -28,6 +28,7 @@ router.post("/nodes", checkSession, async (req, res) => {
   let { alt, connections, lat, long } = req.body;
 
   if (!alt || !connections || !lat || !long) {
+    console.log("alt: " + alt + "\nconnections: " + connections + "\nlat: " + lat + "\nlong: " + long )
     return res.status(400).json({ error: "Missing fields: alt, connections, lat, long required"});
   }
 

@@ -32,11 +32,12 @@
         <button id="getLocation" class="btn">Use Current Location</button>
         <p id="status" style="margin-top: 10px; font-size: 0.9em; color: gray;"></p>
 
+        <!-- possible change to long, lat, alt -->
         <form id="nodeForm" action="/nodes" method="POST">
-          <input type="text" id="longitude" name="longitude" placeholder="Longitude" required>
-          <input type="text" id="latitude" name="latitude" placeholder="Latitude" required>
-          <input type="text" id="altitude" name="altitude" placeholder="Altitude" required>
-          <input type="text" id="connections" name="connections" placeholder="Connections (comma-separated)">
+          <input type="text" id="long" placeholder="Longitude" required>
+          <input type="text" id="lat" placeholder="Latitude" required>
+          <input type="text" id="alt" placeholder="Altitude" required>
+          <input type="text" id="connections" placeholder="Connections (comma-separated)">
           <button type="submit" class="btn">Add Node</button>
         </form>
       </section>
@@ -119,6 +120,6 @@
     }
   </script>
 
-  <script src="/js/nodes.js"></script>
+  <script type="module" src="/js/nodes.js"></script>
 </body>
 </html>

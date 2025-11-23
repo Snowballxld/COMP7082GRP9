@@ -1,24 +1,25 @@
-// public/js/nodes.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
 
-// ------------------------
-// Initialize Firebase
-// ------------------------
 const app = initializeApp(window.firebaseConfig);
 const auth = getAuth(app);
 
-// ------------------------
-// Optional login/logout elements (if present)
-// ------------------------
-const loginForm = document.getElementById('loginForm');
-const errorElem = document.getElementById('error');
-const logoutBtn = document.getElementById('logoutBtn');
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("nodeForm");
+  const list = document.getElementById("nodesList");
+
+  // Fetch existing nodes on page load
+  fetch("/api/nodes")
+    .then(res => res.json());
+
+  // Handle form submission
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
     const formData = {
-      long: form.longitude.value,
-      lat: form.latitude.value,
-      alt: form.altitude.value,
+      long: form.long.value,
+      lat: form.lat.value,
+      alt: form.alt.value,
       connections: form.connections.value
     };
 
@@ -36,17 +37,20 @@ const logoutBtn = document.getElementById('logoutBtn');
         return;
       }
 
-      renderNodes([...listData(), data]); // append new node
       form.reset();
     } catch (err) {
       console.error(err);
       alert("Failed to create node");
     }
+  });
+});
 
-    
-// ------------------------
-// Load all nodes
-// ------------------------
+
+
+
+
+
+
 async function loadNodes() {
   try {
     const res = await fetch("/api/nodes");
