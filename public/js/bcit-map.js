@@ -28,6 +28,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 
+// Toggle: true = show ALL connections, false = only show computed path
+const SHOW_ALL_LINKS = true;
+
+
   // --- Pull nodes from backend API and render markers ---
 async function loadNodes() {
   try {
@@ -84,6 +88,43 @@ async function loadNodes() {
         });
       }
     });
+
+    // --- OPTIONAL: draw all node links ---
+if (SHOW_ALL_LINKS) {
+  const allLines = {
+    type: "FeatureCollection",
+    features: []
+  };
+
+  graph.forEach((edges, id) => {
+    const start = nodeMap.get(id);
+    edges.forEach(edge => {
+      const end = nodeMap.get(edge.id);
+      if (start && end) {
+        allLines.features.push({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: [start, end] }
+        });
+      }
+    });
+  });
+
+  map.addSource("all-links", { type: "geojson", data: allLines });
+  map.addLayer({
+    id: "all-links-line",
+    type: "line",
+    source: "all-links",
+    paint: {
+      "line-color": "red",
+      "line-width": 5,
+      "line-opacity": 0.8
+    }
+  });
+
+  // If we're showing all links, do NOT draw shortest path.
+  return;
+}
+
 
     // Step 3: Dijkstra
     function dijkstra(graph, startId, endId) {
