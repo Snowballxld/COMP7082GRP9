@@ -926,6 +926,159 @@
       "type": "stairs",
       "source": "SW3-Floor2.geojson",
       "query": "SW3-S299"
+    },
+    {
+      "label": "SW5-1845",
+      "building": "SW5",
+      "floor": "1",
+      "room": "1845",
+      "type": "room",
+      "source": "SW5-Floor1.geojson",
+      "query": "SW5-1845"
+    },
+    {
+      "label": "SW5-1855",
+      "building": "SW5",
+      "floor": "1",
+      "room": "1855",
+      "type": "room",
+      "source": "SW5-Floor1.geojson",
+      "query": "SW5-1855"
+    },
+    {
+      "label": "SW5-1850",
+      "building": "SW5",
+      "floor": "1",
+      "room": "1850",
+      "type": "room",
+      "source": "SW5-Floor1.geojson",
+      "query": "SW5-1850"
+    },
+    {
+      "label": "SW5-1840",
+      "building": "SW5",
+      "floor": "1",
+      "room": "1840",
+      "type": "room",
+      "source": "SW5-Floor1.geojson",
+      "query": "SW5-1840"
+    },
+    {
+      "label": "SW5-1800",
+      "building": "SW5",
+      "floor": "1",
+      "room": "1800",
+      "type": "room",
+      "source": "SW5-Floor1.geojson",
+      "query": "SW5-1800"
+    },
+    {
+      "label": "SW5-S189",
+      "building": "SW5",
+      "floor": "1",
+      "room": "S189",
+      "type": "stairs",
+      "source": "SW5-Floor1.geojson",
+      "query": "SW5-S189"
+    },
+    {
+      "label": "SW5-S180",
+      "building": "SW5",
+      "floor": "1",
+      "room": "S180",
+      "type": "stairs",
+      "source": "SW5-Floor1.geojson",
+      "query": "SW5-S180"
+    },
+    {
+      "label": "SW5-2875",
+      "building": "SW5",
+      "floor": "2",
+      "room": "2875",
+      "type": "room",
+      "source": "SW5-Floor2.geojson",
+      "query": "SW5-2875"
+    },
+    {
+      "label": "SW5-2895",
+      "building": "SW5",
+      "floor": "2",
+      "room": "2895",
+      "type": "room",
+      "source": "SW5-Floor2.geojson",
+      "query": "SW5-2895"
+    },
+    {
+      "label": "SW5-2825",
+      "building": "SW5",
+      "floor": "2",
+      "room": "2825",
+      "type": "room",
+      "source": "SW5-Floor2.geojson",
+      "query": "SW5-2825"
+    },
+    {
+      "label": "SW5-2800",
+      "building": "SW5",
+      "floor": "2",
+      "room": "2800",
+      "type": "room",
+      "source": "SW5-Floor2.geojson",
+      "query": "SW5-2800"
+    },
+    {
+      "label": "SW5-2890",
+      "building": "SW5",
+      "floor": "2",
+      "room": "2890",
+      "type": "room",
+      "source": "SW5-Floor2.geojson",
+      "query": "SW5-2890"
+    },
+    {
+      "label": "SW5-2810",
+      "building": "SW5",
+      "floor": "2",
+      "room": "2810",
+      "type": "room",
+      "source": "SW5-Floor2.geojson",
+      "query": "SW5-2810"
+    },
+    {
+      "label": "SW5-2880",
+      "building": "SW5",
+      "floor": "2",
+      "room": "2880",
+      "type": "room",
+      "source": "SW5-Floor2.geojson",
+      "query": "SW5-2880"
+    },
+    {
+      "label": "SW5-2820",
+      "building": "SW5",
+      "floor": "2",
+      "room": "2820",
+      "type": "room",
+      "source": "SW5-Floor2.geojson",
+      "query": "SW5-2820"
+    },
+    {
+      "label": "SW5-S280",
+      "building": "SW5",
+      "floor": "2",
+      "room": "S280",
+      "type": "room",
+      "source": "SW5-Floor2.geojson",
+      "query": "SW5-S280"
+    },
+    {
+      "label": "SW5-S289",
+      "building": "SW5",
+      "floor": "2",
+      "room": "S289",
+      "type": "stairs",
+      "source": "SW5-Floor2.geojson",
+      "query": "SW5-S289"
     }
   ]
 }

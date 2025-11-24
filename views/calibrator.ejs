@@ -8,7 +8,7 @@
     </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Optional: your existing CSS (won't break if missing, just 404s) -->
+    <!-- Optional: your existing CSS -->
     <link rel="stylesheet" href="/css/styles.css" />
     <link rel="stylesheet" href="/css/bcit-map.css" />
 
@@ -138,473 +138,637 @@
 <body>
     <%- include("_menu") %>
 
-        <div class="calibrator-layout">
-            <aside class="calibrator-sidebar">
-                <h2>Geometry Calibrator</h2>
-                <small>
-                    Choose a <b>.geojson</b> or <b>.json</b> file, drag the shape on the map,
-                    then export the updated GeoJSON.
-                </small>
+    <div class="calibrator-layout">
+        <aside class="calibrator-sidebar">
+            <h2>Geometry Calibrator</h2>
+            <small>
+                Choose a <b>.geojson</b> or <b>.json</b> file, drag the shape on the map,
+                then export the updated GeoJSON.
+                <br><br>
+                <b>Controls:</b><br>
+                • Drag = move<br>
+                • Shift + Drag = uniform scale<br>
+                • Alt + Drag = stretch (non-uniform scale)<br>
+                • Ctrl/Cmd + Drag = rotate
+            </small>
 
-                <div class="file-row">
-                    <label for="geojson-file">Input GeoJSON File</label>
-                    <input type="file" id="geojson-file"
-                        accept=".geojson,.json,application/geo+json,application/json" />
-                    <small id="file-info"></small>
-                </div>
+            <div class="file-row">
+                <label for="geojson-file">Input GeoJSON File</label>
+                <input type="file" id="geojson-file"
+                    accept=".geojson,.json,application/geo+json,application/json" />
+                <small id="file-info"></small>
+            </div>
 
-                <div class="button-row">
-                    <button id="clear-btn">Clear Map</button>
-                    <button id="export-btn" class="primary">Export Edited GeoJSON</button>
-                </div>
+            <div class="button-row">
+                <button id="clear-btn">Clear Map</button>
+                <button id="export-btn" class="primary">Export Edited GeoJSON</button>
+            </div>
 
-                <div id="status"></div>
+            <div id="status"></div>
 
-                <textarea id="geojson-output" placeholder="Exported GeoJSON will appear here when you click Export."
-                    readonly></textarea>
-            </aside>
+            <textarea id="geojson-output" placeholder="Exported GeoJSON will appear here when you click Export."
+                readonly></textarea>
+        </aside>
 
-            <div id="map"></div>
-        </div>
+        <div id="map"></div>
+    </div>
 
-        <script>
-            // ==============================
-            //  MAP SETUP
-            // ==============================
-            mapboxgl.accessToken = "<%= mapboxToken %>";
+    <script>
+        // ==============================
+        //  MAP SETUP
+        // ==============================
+        mapboxgl.accessToken = "<%= mapboxToken %>";
 
-            const MAP_STYLE = "mapbox://styles/mapbox/streets-v12"; // adjust if you use a custom style
+        const MAP_STYLE = "mapbox://styles/mapbox/streets-v12"; // adjust if you use a custom style
 
-            const map = new mapboxgl.Map({
-                container: "map",
-                style: MAP_STYLE,
-                center: [-123.001, 49.25], // adjust to your main map's default center
-                zoom: 16
-            });
+        const map = new mapboxgl.Map({
+            container: "map",
+            style: MAP_STYLE,
+            center: [-123.001, 49.25], // adjust to your main map's default center
+            zoom: 16
+        });
 
-            map.addControl(new mapboxgl.NavigationControl(), "top-right");
+        map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-            // ==============================
-            //  DOM ELEMENTS
-            // ==============================
-            const fileInput = document.getElementById("geojson-file");
-            const fileInfoEl = document.getElementById("file-info");
-            const statusEl = document.getElementById("status");
-            const outputEl = document.getElementById("geojson-output");
-            const clearBtn = document.getElementById("clear-btn");
-            const exportBtn = document.getElementById("export-btn");
+        // ==============================
+        //  DOM ELEMENTS
+        // ==============================
+        const fileInput = document.getElementById("geojson-file");
+        const fileInfoEl = document.getElementById("file-info");
+        const statusEl = document.getElementById("status");
+        const outputEl = document.getElementById("geojson-output");
+        const clearBtn = document.getElementById("clear-btn");
+        const exportBtn = document.getElementById("export-btn");
 
-            function setStatus(message) {
-                statusEl.textContent = message || "";
+        function setStatus(message) {
+            statusEl.textContent = message || "";
+        }
+
+        // ==============================
+        //  GEOJSON HELPERS
+        // ==============================
+
+        function toFeatureCollection(json) {
+            if (!json || !json.type) {
+                throw new Error("Invalid GeoJSON: missing 'type'.");
             }
 
-            // ==============================
-            //  GEOJSON HELPERS
-            // ==============================
+            if (json.type === "FeatureCollection") return json;
 
-            function toFeatureCollection(json) {
-                if (!json || !json.type) {
-                    throw new Error("Invalid GeoJSON: missing 'type'.");
-                }
-
-                if (json.type === "FeatureCollection") return json;
-
-                if (json.type === "Feature") {
-                    return { type: "FeatureCollection", features: [json] };
-                }
-
-                if (json.type === "GeometryCollection") {
-                    return {
-                        type: "FeatureCollection",
-                        features: (json.geometries || []).map((g) => ({
-                            type: "Feature",
-                            properties: {},
-                            geometry: g
-                        }))
-                    };
-                }
-
-                const geometryTypes = [
-                    "Point", "MultiPoint",
-                    "LineString", "MultiLineString",
-                    "Polygon", "MultiPolygon"
-                ];
-
-                if (geometryTypes.includes(json.type)) {
-                    return {
-                        type: "FeatureCollection",
-                        features: [{ type: "Feature", properties: {}, geometry: json }]
-                    };
-                }
-
-                if (json.type === "Topology") {
-                    throw new Error("File looks like TopoJSON (type=Topology). Convert to GeoJSON first.");
-                }
-
-                throw new Error("Unsupported GeoJSON root type: " + json.type);
+            if (json.type === "Feature") {
+                return { type: "FeatureCollection", features: [json] };
             }
 
-            function computeBbox(featureCollection) {
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
-                function scan(coords) {
-                    if (!coords) return;
-                    if (typeof coords[0] === "number") {
-                        const [lng, lat] = coords;
-                        if (lng < minX) minX = lng;
-                        if (lat < minY) minY = lat;
-                        if (lng > maxX) maxX = lng;
-                        if (lat > maxY) maxY = lat;
-                    } else {
-                        for (const c of coords) scan(c);
-                    }
-                }
-
-                for (const f of featureCollection.features || []) {
-                    if (!f.geometry) continue;
-                    if (f.geometry.type === "GeometryCollection") {
-                        for (const g of f.geometry.geometries || []) scan(g.coordinates);
-                    } else {
-                        scan(f.geometry.coordinates);
-                    }
-                }
-
-                if (minX === Infinity) return null;
-                return [minX, minY, maxX, maxY];
+            if (json.type === "GeometryCollection") {
+                return {
+                    type: "FeatureCollection",
+                    features: (json.geometries || []).map((g) => ({
+                        type: "Feature",
+                        properties: {},
+                        geometry: g
+                    }))
+                };
             }
 
-            // Center = simple average of all coords
-            function computeCenter(featureCollection) {
-                let sumLng = 0;
-                let sumLat = 0;
-                let count = 0;
+            const geometryTypes = [
+                "Point", "MultiPoint",
+                "LineString", "MultiLineString",
+                "Polygon", "MultiPolygon"
+            ];
 
-                function scan(coords) {
-                    if (!coords) return;
-                    if (typeof coords[0] === "number") {
-                        sumLng += coords[0];
-                        sumLat += coords[1];
-                        count++;
-                    } else {
-                        for (const c of coords) scan(c);
-                    }
-                }
-
-                for (const f of featureCollection.features || []) {
-                    if (!f.geometry) continue;
-                    if (f.geometry.type === "GeometryCollection") {
-                        for (const g of f.geometry.geometries || []) scan(g.coordinates);
-                    } else {
-                        scan(f.geometry.coordinates);
-                    }
-                }
-
-                if (!count) return null;
-                return { lng: sumLng / count, lat: sumLat / count };
+            if (geometryTypes.includes(json.type)) {
+                return {
+                    type: "FeatureCollection",
+                    features: [{ type: "Feature", properties: {}, geometry: json }]
+                };
             }
 
-            // Simple distance in lon/lat space (good enough for relative scaling)
-            function lngLatDistance(a, b) {
-                const dx = b.lng - a.lng;
-                const dy = b.lat - a.lat;
-                return Math.sqrt(dx * dx + dy * dy);
+            if (json.type === "Topology") {
+                throw new Error("File looks like TopoJSON (type=Topology). Convert to GeoJSON first.");
             }
 
-            // Generic transformer for deeply nested coordinate arrays
-            function transformCoords(coords, fn) {
-                if (!coords) return coords;
+            throw new Error("Unsupported GeoJSON root type: " + json.type);
+        }
+
+        function computeBbox(featureCollection) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+            function scan(coords) {
+                if (!coords) return;
                 if (typeof coords[0] === "number") {
-                    return fn(coords);
-                }
-                return coords.map((c) => transformCoords(c, fn));
-            }
-
-            // ==============================
-            //  STATE FOR DRAGGING & SCALING
-            // ==============================
-            const SOURCE_ID = "calibrator-geom";
-            const FILL_LAYER_ID = "calibrator-fill";
-            const LINE_LAYER_ID = "calibrator-outline";
-
-            let currentData = null;      // current FeatureCollection on map
-            let originalData = null;     // snapshot at drag start
-            let dragStartLngLat = null;
-            let isDragging = false;
-            let interactionMode = null;  // "translate" or "scale"
-            let scaleStartCenter = null;
-            let scaleStartRadius = null;
-
-            function ensureLayers() {
-                if (!map.getSource(SOURCE_ID)) {
-                    map.addSource(SOURCE_ID, {
-                        type: "geojson",
-                        data: { type: "FeatureCollection", features: [] }
-                    });
-                }
-
-                if (!map.getLayer(FILL_LAYER_ID)) {
-                    map.addLayer({
-                        id: FILL_LAYER_ID,
-                        type: "fill",
-                        source: SOURCE_ID,
-                        paint: {
-                            "fill-color": "#ff8800",
-                            "fill-opacity": 0.35
-                        }
-                    });
-                }
-
-                if (!map.getLayer(LINE_LAYER_ID)) {
-                    map.addLayer({
-                        id: LINE_LAYER_ID,
-                        type: "line",
-                        source: SOURCE_ID,
-                        paint: {
-                            "line-color": "#ff5500",
-                            "line-width": 2
-                        }
-                    });
-                }
-            }
-
-            // ==============================
-            //  FILE UPLOAD → LOAD SHAPE
-            // ==============================
-            fileInput.addEventListener("change", () => {
-                const file = fileInput.files && fileInput.files[0];
-                if (!file) {
-                    fileInfoEl.textContent = "";
-                    return;
-                }
-
-                fileInfoEl.textContent = `Selected: ${file.name} (${Math.round(file.size / 1024)} KB)`;
-
-                const reader = new FileReader();
-
-                reader.onload = (event) => {
-                    let json;
-                    try {
-                        json = JSON.parse(event.target.result);
-                    } catch (err) {
-                        console.error("JSON parse error:", err);
-                        setStatus("❌ Error: file is not valid JSON.");
-                        return;
-                    }
-
-                    let fc;
-                    try {
-                        fc = toFeatureCollection(json);
-                    } catch (err) {
-                        console.error("GeoJSON normalisation error:", err);
-                        setStatus("❌ " + err.message);
-                        return;
-                    }
-
-                    currentData = fc;
-                    originalData = JSON.parse(JSON.stringify(fc)); // deep copy
-
-                    ensureLayers();
-                    const src = map.getSource(SOURCE_ID);
-                    src.setData(fc);
-
-                    const bbox = computeBbox(fc);
-                    if (bbox) {
-                        map.fitBounds(bbox, { padding: 40, maxZoom: 20 });
-                    }
-
-                    setStatus(
-                        "📥 Loaded " +
-                        fc.features.length +
-                        " feature(s).\n" +
-                        "Tip: Drag to move. Hold Shift and drag to resize."
-                    );
-                };
-
-                reader.onerror = () => {
-                    console.error("FileReader error");
-                    setStatus("❌ Error reading file.");
-                };
-
-                reader.readAsText(file);
-            });
-
-            // ==============================
-            //  DRAGGING & RESIZING
-            // ==============================
-            function onDragStart(e) {
-                if (!currentData) return;
-
-                e.preventDefault();
-                map.dragPan.disable();
-
-                // Shift + drag = scale, plain drag = move
-                const isScale = e.originalEvent && e.originalEvent.shiftKey;
-                interactionMode = isScale ? "scale" : "translate";
-                isDragging = true;
-                dragStartLngLat = e.lngLat;
-                originalData = JSON.parse(JSON.stringify(currentData)); // snapshot
-
-                if (interactionMode === "scale") {
-                    map.getCanvas().style.cursor = "nwse-resize"; // or any resize cursor
-                    scaleStartCenter = computeCenter(originalData);
-                    if (!scaleStartCenter) {
-                        // fall back to translate if we can't compute center
-                        interactionMode = "translate";
-                        map.getCanvas().style.cursor = "grabbing";
-                    } else {
-                        scaleStartRadius = lngLatDistance(scaleStartCenter, dragStartLngLat);
-                    }
+                    const [lng, lat] = coords;
+                    if (lng < minX) minX = lng;
+                    if (lat < minY) minY = lat;
+                    if (lng > maxX) maxX = lng;
+                    if (lat > maxY) maxY = lat;
                 } else {
-                    map.getCanvas().style.cursor = "grabbing";
+                    for (const c of coords) scan(c);
                 }
             }
 
-            function onDragMove(e) {
-                if (!isDragging || !originalData || !interactionMode) return;
-
-                if (interactionMode === "translate") {
-                    const dx = e.lngLat.lng - dragStartLngLat.lng;
-                    const dy = e.lngLat.lat - dragStartLngLat.lat;
-
-                    const moved = {
-                        type: "FeatureCollection",
-                        features: originalData.features.map((f) => {
-                            if (!f.geometry) return f;
-                            const g = JSON.parse(JSON.stringify(f.geometry));
-
-                            if (g.type === "GeometryCollection") {
-                                g.geometries = g.geometries.map((geom) => {
-                                    const geomCopy = JSON.parse(JSON.stringify(geom));
-                                    geomCopy.coordinates = transformCoords(geomCopy.coordinates, ([lng, lat]) => [
-                                        lng + dx,
-                                        lat + dy
-                                    ]);
-                                    return geomCopy;
-                                });
-                            } else {
-                                g.coordinates = transformCoords(g.coordinates, ([lng, lat]) => [
-                                    lng + dx,
-                                    lat + dy
-                                ]);
-                            }
-
-                            return {
-                                type: "Feature",
-                                properties: JSON.parse(JSON.stringify(f.properties || {})),
-                                geometry: g
-                            };
-                        })
-                    };
-
-                    currentData = moved;
-                    const src = map.getSource(SOURCE_ID);
-                    if (src) src.setData(moved);
-                } else if (interactionMode === "scale" && scaleStartCenter) {
-                    const currentRadius = lngLatDistance(scaleStartCenter, e.lngLat);
-                    if (!scaleStartRadius || scaleStartRadius === 0) return;
-
-                    const scale = currentRadius / scaleStartRadius;
-
-                    const scaled = {
-                        type: "FeatureCollection",
-                        features: originalData.features.map((f) => {
-                            if (!f.geometry) return f;
-                            const g = JSON.parse(JSON.stringify(f.geometry));
-
-                            const center = scaleStartCenter;
-
-                            const scaleFn = ([lng, lat]) => [
-                                center.lng + (lng - center.lng) * scale,
-                                center.lat + (lat - center.lat) * scale
-                            ];
-
-                            if (g.type === "GeometryCollection") {
-                                g.geometries = g.geometries.map((geom) => {
-                                    const geomCopy = JSON.parse(JSON.stringify(geom));
-                                    geomCopy.coordinates = transformCoords(geomCopy.coordinates, scaleFn);
-                                    return geomCopy;
-                                });
-                            } else {
-                                g.coordinates = transformCoords(g.coordinates, scaleFn);
-                            }
-
-                            return {
-                                type: "Feature",
-                                properties: JSON.parse(JSON.stringify(f.properties || {})),
-                                geometry: g
-                            };
-                        })
-                    };
-
-                    currentData = scaled;
-                    const src = map.getSource(SOURCE_ID);
-                    if (src) src.setData(scaled);
+            for (const f of featureCollection.features || []) {
+                if (!f.geometry) continue;
+                if (f.geometry.type === "GeometryCollection") {
+                    for (const g of f.geometry.geometries || []) scan(g.coordinates);
+                } else {
+                    scan(f.geometry.coordinates);
                 }
             }
 
-            function onDragEnd() {
-                if (!isDragging) return;
-                isDragging = false;
-                dragStartLngLat = null;
-                interactionMode = null;
-                map.getCanvas().style.cursor = "";
-                map.dragPan.enable();
-                setStatus("✅ Shape updated. You can export the new GeoJSON.");
+            if (minX === Infinity) return null;
+            return [minX, minY, maxX, maxY];
+        }
+
+        // Center = simple average of all coords
+        function computeCenter(featureCollection) {
+            let sumLng = 0;
+            let sumLat = 0;
+            let count = 0;
+
+            function scan(coords) {
+                if (!coords) return;
+                if (typeof coords[0] === "number") {
+                    sumLng += coords[0];
+                    sumLat += coords[1];
+                    count++;
+                } else {
+                    for (const c of coords) scan(c);
+                }
             }
 
-            map.on("load", () => {
-                ensureLayers();
-
-                map.on("mousedown", FILL_LAYER_ID, onDragStart);
-                map.on("mousedown", LINE_LAYER_ID, onDragStart);
-
-                map.on("mousemove", onDragMove);
-                map.on("mouseup", onDragEnd);
-                map.on("mouseleave", onDragEnd);
-            });
-
-            // ==============================
-            //  CLEAR MAP
-            // ==============================
-            clearBtn.addEventListener("click", () => {
-                const src = map.getSource(SOURCE_ID);
-                if (src) {
-                    src.setData({ type: "FeatureCollection", features: [] });
+            for (const f of featureCollection.features || []) {
+                if (!f.geometry) continue;
+                if (f.geometry.type === "GeometryCollection") {
+                    for (const g of f.geometry.geometries || []) scan(g.coordinates);
+                } else {
+                    scan(f.geometry.coordinates);
                 }
-                currentData = null;
-                originalData = null;
-                outputEl.value = "";
-                setStatus("🧹 Cleared all features from map.");
-            });
+            }
 
-            // ==============================
-            //  EXPORT EDITED GEOJSON
-            // ==============================
-            exportBtn.addEventListener("click", () => {
-                if (!currentData || !currentData.features || currentData.features.length === 0) {
-                    setStatus("⚠ No features to export.");
+            if (!count) return null;
+            return { lng: sumLng / count, lat: sumLat / count };
+        }
+
+        // Simple distance in lon/lat space (good enough for relative scaling)
+        function lngLatDistance(a, b) {
+            const dx = b.lng - a.lng;
+            const dy = b.lat - a.lat;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        // Generic transformer for deeply nested coordinate arrays
+        function transformCoords(coords, fn) {
+            if (!coords) return coords;
+            if (typeof coords[0] === "number") {
+                return fn(coords);
+            }
+            return coords.map((c) => transformCoords(c, fn));
+        }
+
+        // ==============================
+        //  STATE FOR DRAGGING & TRANSFORM
+        // ==============================
+        const SOURCE_ID = "calibrator-geom";
+        const FILL_LAYER_ID = "calibrator-fill";
+        const LINE_LAYER_ID = "calibrator-outline";
+
+        let currentData = null;      // current FeatureCollection on map
+        let originalData = null;     // snapshot at drag start
+        let dragStartLngLat = null;
+        let isDragging = false;
+        let interactionMode = null;  // "translate" | "scale-uniform" | "scale-nonuniform" | "rotate"
+        let transformCenter = null;
+
+        // For uniform scale
+        let scaleStartRadius = null;
+
+        // For non-uniform scale
+        let scaleStartVector = null; // { dx, dy }
+
+        // For rotation
+        let rotateStartAngle = null;
+
+        function ensureLayers() {
+            if (!map.getSource(SOURCE_ID)) {
+                map.addSource(SOURCE_ID, {
+                    type: "geojson",
+                    data: { type: "FeatureCollection", features: [] }
+                });
+            }
+
+            if (!map.getLayer(FILL_LAYER_ID)) {
+                map.addLayer({
+                    id: FILL_LAYER_ID,
+                    type: "fill",
+                    source: SOURCE_ID,
+                    paint: {
+                        "fill-color": "#ff8800",
+                        "fill-opacity": 0.35
+                    }
+                });
+            }
+
+            if (!map.getLayer(LINE_LAYER_ID)) {
+                map.addLayer({
+                    id: LINE_LAYER_ID,
+                    type: "line",
+                    source: SOURCE_ID,
+                    paint: {
+                        "line-color": "#ff5500",
+                        "line-width": 2
+                    }
+                });
+            }
+        }
+
+        // ==============================
+        //  FILE UPLOAD → LOAD SHAPE
+        // ==============================
+        fileInput.addEventListener("change", () => {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {
+                fileInfoEl.textContent = "";
+                return;
+            }
+
+            fileInfoEl.textContent = `Selected: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+
+            const reader = new FileReader();
+
+            reader.onload = (event) => {
+                let json;
+                try {
+                    json = JSON.parse(event.target.result);
+                } catch (err) {
+                    console.error("JSON parse error:", err);
+                    setStatus("❌ Error: file is not valid JSON.");
                     return;
                 }
 
-                const json = JSON.stringify(currentData, null, 2);
-                outputEl.value = json;
+                let fc;
+                try {
+                    fc = toFeatureCollection(json);
+                } catch (err) {
+                    console.error("GeoJSON normalisation error:", err);
+                    setStatus("❌ " + err.message);
+                    return;
+                }
 
-                const blob = new Blob([json], { type: "application/vnd.geo+json" });
-                const url = URL.createObjectURL(blob);
+                currentData = fc;
+                originalData = JSON.parse(JSON.stringify(fc)); // deep copy
 
-                const a = document.createElement("a");
-                const timestamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
-                a.href = url;
-                a.download = `edited-geometry-${timestamp}.geojson`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                ensureLayers();
+                const src = map.getSource(SOURCE_ID);
+                src.setData(fc);
 
-                URL.revokeObjectURL(url);
+                const bbox = computeBbox(fc);
+                if (bbox) {
+                    map.fitBounds(bbox, { padding: 40, maxZoom: 20 });
+                }
 
-                setStatus(`💾 Exported ${currentData.features.length} feature(s) as GeoJSON.`);
-            });
-        </script>
+                setStatus(
+                    "📥 Loaded " +
+                    fc.features.length +
+                    " feature(s).\n" +
+                    "Drag = move, Shift+Drag = uniform scale, Alt+Drag = stretch, Ctrl/Cmd+Drag = rotate."
+                );
+            };
+
+            reader.onerror = () => {
+                console.error("FileReader error");
+                setStatus("❌ Error reading file.");
+            };
+
+            reader.readAsText(file);
+        });
+
+        // ==============================
+        //  DRAGGING & TRANSFORMING
+        // ==============================
+        function onDragStart(e) {
+            if (!currentData) return;
+
+            e.preventDefault();
+            map.dragPan.disable();
+
+            const ev = e.originalEvent || {};
+            const shift = !!ev.shiftKey;
+            const alt = !!ev.altKey;
+            const ctrl = !!(ev.ctrlKey || ev.metaKey);
+
+            interactionMode = null;
+            transformCenter = null;
+            scaleStartRadius = null;
+            scaleStartVector = null;
+            rotateStartAngle = null;
+
+            dragStartLngLat = e.lngLat;
+            originalData = JSON.parse(JSON.stringify(currentData)); // snapshot
+
+            if (ctrl) {
+                interactionMode = "rotate";
+            } else if (alt) {
+                interactionMode = "scale-nonuniform";
+            } else if (shift) {
+                interactionMode = "scale-uniform";
+            } else {
+                interactionMode = "translate";
+            }
+
+            if (interactionMode === "translate") {
+                map.getCanvas().style.cursor = "grabbing";
+                isDragging = true;
+                return;
+            }
+
+            // For scale / rotate we need a center
+            const center = computeCenter(originalData);
+            if (!center) {
+                interactionMode = "translate";
+                map.getCanvas().style.cursor = "grabbing";
+                isDragging = true;
+                return;
+            }
+
+            transformCenter = center;
+
+            if (interactionMode === "scale-uniform") {
+                scaleStartRadius = lngLatDistance(transformCenter, dragStartLngLat);
+                if (!scaleStartRadius || scaleStartRadius === 0) {
+                    interactionMode = "translate";
+                    map.getCanvas().style.cursor = "grabbing";
+                } else {
+                    map.getCanvas().style.cursor = "nwse-resize";
+                }
+            } else if (interactionMode === "scale-nonuniform") {
+                const dx = dragStartLngLat.lng - transformCenter.lng;
+                const dy = dragStartLngLat.lat - transformCenter.lat;
+                scaleStartVector = { dx, dy };
+                map.getCanvas().style.cursor = "nesw-resize";
+            } else if (interactionMode === "rotate") {
+                const dx = dragStartLngLat.lng - transformCenter.lng;
+                const dy = dragStartLngLat.lat - transformCenter.lat;
+                rotateStartAngle = Math.atan2(dy, dx);
+                map.getCanvas().style.cursor = "crosshair";
+            }
+
+            isDragging = true;
+        }
+
+        function onDragMove(e) {
+            if (!isDragging || !originalData || !interactionMode) return;
+
+            const src = map.getSource(SOURCE_ID);
+            if (!src) return;
+
+            if (interactionMode === "translate") {
+                const dx = e.lngLat.lng - dragStartLngLat.lng;
+                const dy = e.lngLat.lat - dragStartLngLat.lat;
+
+                const moved = {
+                    type: "FeatureCollection",
+                    features: originalData.features.map((f) => {
+                        if (!f.geometry) return f;
+                        const g = JSON.parse(JSON.stringify(f.geometry));
+
+                        const moveFn = ([lng, lat]) => [lng + dx, lat + dy];
+
+                        if (g.type === "GeometryCollection") {
+                            g.geometries = g.geometries.map((geom) => {
+                                const geomCopy = JSON.parse(JSON.stringify(geom));
+                                geomCopy.coordinates = transformCoords(geomCopy.coordinates, moveFn);
+                                return geomCopy;
+                            });
+                        } else {
+                            g.coordinates = transformCoords(g.coordinates, moveFn);
+                        }
+
+                        return {
+                            type: "Feature",
+                            properties: JSON.parse(JSON.stringify(f.properties || {})),
+                            geometry: g
+                        };
+                    })
+                };
+
+                currentData = moved;
+                src.setData(moved);
+                return;
+            }
+
+            if (!transformCenter) return;
+
+            if (interactionMode === "scale-uniform") {
+                const currentRadius = lngLatDistance(transformCenter, e.lngLat);
+                if (!scaleStartRadius || scaleStartRadius === 0) return;
+
+                const scale = currentRadius / scaleStartRadius;
+
+                const scaled = {
+                    type: "FeatureCollection",
+                    features: originalData.features.map((f) => {
+                        if (!f.geometry) return f;
+                        const g = JSON.parse(JSON.stringify(f.geometry));
+
+                        const center = transformCenter;
+
+                        const scaleFn = ([lng, lat]) => [
+                            center.lng + (lng - center.lng) * scale,
+                            center.lat + (lat - center.lat) * scale
+                        ];
+
+                        if (g.type === "GeometryCollection") {
+                            g.geometries = g.geometries.map((geom) => {
+                                const geomCopy = JSON.parse(JSON.stringify(geom));
+                                geomCopy.coordinates = transformCoords(geomCopy.coordinates, scaleFn);
+                                return geomCopy;
+                            });
+                        } else {
+                            g.coordinates = transformCoords(g.coordinates, scaleFn);
+                        }
+
+                        return {
+                            type: "Feature",
+                            properties: JSON.parse(JSON.stringify(f.properties || {})),
+                            geometry: g
+                        };
+                    })
+                };
+
+                currentData = scaled;
+                src.setData(scaled);
+                return;
+            }
+
+            if (interactionMode === "scale-nonuniform") {
+                if (!scaleStartVector) return;
+
+                const center = transformCenter;
+                const startDx = scaleStartVector.dx;
+                const startDy = scaleStartVector.dy;
+                const curDx = e.lngLat.lng - center.lng;
+                const curDy = e.lngLat.lat - center.lat;
+
+                const eps = 1e-9;
+                let scaleX = 1;
+                let scaleY = 1;
+
+                if (Math.abs(startDx) > eps) {
+                    scaleX = curDx / startDx;
+                }
+                if (Math.abs(startDy) > eps) {
+                    scaleY = curDy / startDy;
+                }
+
+                const scaled = {
+                    type: "FeatureCollection",
+                    features: originalData.features.map((f) => {
+                        if (!f.geometry) return f;
+                        const g = JSON.parse(JSON.stringify(f.geometry));
+
+                        const scaleFn = ([lng, lat]) => [
+                            center.lng + (lng - center.lng) * scaleX,
+                            center.lat + (lat - center.lat) * scaleY
+                        ];
+
+                        if (g.type === "GeometryCollection") {
+                            g.geometries = g.geometries.map((geom) => {
+                                const geomCopy = JSON.parse(JSON.stringify(geom));
+                                geomCopy.coordinates = transformCoords(geomCopy.coordinates, scaleFn);
+                                return geomCopy;
+                            });
+                        } else {
+                            g.coordinates = transformCoords(g.coordinates, scaleFn);
+                        }
+
+                        return {
+                            type: "Feature",
+                            properties: JSON.parse(JSON.stringify(f.properties || {})),
+                            geometry: g
+                        };
+                    })
+                };
+
+                currentData = scaled;
+                src.setData(scaled);
+                return;
+            }
+
+            if (interactionMode === "rotate") {
+                if (rotateStartAngle == null) return;
+
+                const center = transformCenter;
+                const dx = e.lngLat.lng - center.lng;
+                const dy = e.lngLat.lat - center.lat;
+                const currentAngle = Math.atan2(dy, dx);
+                const theta = currentAngle - rotateStartAngle;
+                const cosT = Math.cos(theta);
+                const sinT = Math.sin(theta);
+
+                const rotateFn = ([lng, lat]) => {
+                    const relX = lng - center.lng;
+                    const relY = lat - center.lat;
+                    const newX = relX * cosT - relY * sinT;
+                    const newY = relX * sinT + relY * cosT;
+                    return [center.lng + newX, center.lat + newY];
+                };
+
+                const rotated = {
+                    type: "FeatureCollection",
+                    features: originalData.features.map((f) => {
+                        if (!f.geometry) return f;
+                        const g = JSON.parse(JSON.stringify(f.geometry));
+
+                        if (g.type === "GeometryCollection") {
+                            g.geometries = g.geometries.map((geom) => {
+                                const geomCopy = JSON.parse(JSON.stringify(geom));
+                                geomCopy.coordinates = transformCoords(geomCopy.coordinates, rotateFn);
+                                return geomCopy;
+                            });
+                        } else {
+                            g.coordinates = transformCoords(g.coordinates, rotateFn);
+                        }
+
+                        return {
+                            type: "Feature",
+                            properties: JSON.parse(JSON.stringify(f.properties || {})),
+                            geometry: g
+                        };
+                    })
+                };
+
+                currentData = rotated;
+                src.setData(rotated);
+            }
+        }
+
+        function onDragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            dragStartLngLat = null;
+            interactionMode = null;
+            transformCenter = null;
+            scaleStartRadius = null;
+            scaleStartVector = null;
+            rotateStartAngle = null;
+            map.getCanvas().style.cursor = "";
+            map.dragPan.enable();
+            setStatus("✅ Shape updated. You can export the new GeoJSON.");
+        }
+
+        map.on("load", () => {
+            ensureLayers();
+
+            map.on("mousedown", FILL_LAYER_ID, onDragStart);
+            map.on("mousedown", LINE_LAYER_ID, onDragStart);
+
+            map.on("mousemove", onDragMove);
+            map.on("mouseup", onDragEnd);
+            map.on("mouseleave", onDragEnd);
+        });
+
+        // ==============================
+        //  CLEAR MAP
+        // ==============================
+        clearBtn.addEventListener("click", () => {
+            const src = map.getSource(SOURCE_ID);
+            if (src) {
+                src.setData({ type: "FeatureCollection", features: [] });
+            }
+            currentData = null;
+            originalData = null;
+            outputEl.value = "";
+            setStatus("🧹 Cleared all features from map.");
+        });
+
+        // ==============================
+        //  EXPORT EDITED GEOJSON
+        // ==============================
+        exportBtn.addEventListener("click", () => {
+            if (!currentData || !currentData.features || currentData.features.length === 0) {
+                setStatus("⚠ No features to export.");
+                return;
+            }
+
+            const json = JSON.stringify(currentData, null, 2);
+            outputEl.value = json;
+
+            const blob = new Blob([json], { type: "application/vnd.geo+json" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            const timestamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
+            a.href = url;
+            a.download = `edited-geometry-${timestamp}.geojson`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            URL.revokeObjectURL(url);
+
+            setStatus(`💾 Exported ${currentData.features.length} feature(s) as GeoJSON.`);
+        });
+    </script>
 
 </body>
 
