@@ -8,7 +8,7 @@ import pyautogui
 import os
 
 # === GLOBAL CONFIGURATION AND PATHS ===
-BUILDING_CODE = "sw03F1"
+BUILDING_CODE = "sw05F2"
 
 folder_path = f"floorPlans/{BUILDING_CODE[:2]}/{BUILDING_CODE[2:4]}/{BUILDING_CODE[4:]}"
 os.makedirs(folder_path, exist_ok=True) # Ensure directory exists
@@ -24,8 +24,8 @@ META_JSON = f"{folder_path}/meta.json"
 
 # --- Parameters (Consolidated/defined once) ---
 scale_factor = 4        # for visualization (Zoom/Grid)
-zoom_ratio = 0.99       # for vertical crop (Zoom)
-zoom_factor = 1.5       # for centered zoom-in (Zoom)
+zoom_ratio = 0.95       # for vertical crop (Zoom)
+zoom_factor = 1.1       # for centered zoom-in (Zoom)
 cell_size = 1           # adjust based on drawing scale (Zoom, Delete, Label, Grid)
 BOUNDARY_BUFFER = 0.02  # for 'Generate Grid' process
 

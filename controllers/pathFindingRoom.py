@@ -64,7 +64,14 @@ def load_floor_data(base_dir, building_code):
         connections = {}
         if os.path.exists(connections_path):
             with open(connections_path, "r") as f:
-                connections = json.load(f)
+                content = f.read().strip() # Read content and strip whitespace
+                if content:
+                    # Only try to load JSON if the file contains non-whitespace content
+                    try:
+                        connections = json.loads(content)
+                    except json.JSONDecodeError as e:
+                        print(f"Warning: Failed to decode JSON in {connections_path}. Error: {e}")
+                        # Keep connections as empty dict {}
 
         # Coordinate conversion setup
         min_x, max_y, cell_size = meta["min_x"], meta["max_y"], meta["cell_size"]
@@ -303,40 +310,29 @@ def save_path_array(smoothed_path):
 
 def visualize_path(path, start, goal):
     """
-    Visualizes only the path segments on a truly transparent background for all 
-    involved buildings/floors, saving only the path and markers as an overlay.
+    Visualizes the path segments on the floor grid(s) using matplotlib, 
+    matching the original behavior of showing the path on the full map.
     """
     os.makedirs(OUT_DIR, exist_ok=True)
     
     # Define numeric values for visualization
-    TRANSPARENT_BG = 0 
-    PATH_VALUE = 1       
-    START_VALUE = 2      
-    GOAL_VALUE = 3       
-
-    # --- Custom Colormap for Transparency ---
-    colors = [
-        [0, 0, 0, 0],       # Transparent for BACKGROUND_COLOR (value 0)
-        [0.1, 0.8, 0.1, 1], # Green for PATH_VALUE (value 1)
-        [1, 0, 0, 1],       # Red for START_VALUE (value 2)
-        [0, 0, 1, 1]        # Blue for GOAL_VALUE (value 3)
-    ]
-    custom_cmap = plt.cm.colors.ListedColormap(colors)
-    bounds = [0, 1, 2, 3, 4] 
-    norm = plt.cm.colors.BoundaryNorm(bounds, custom_cmap.N)
-    # --- End Custom Colormap ---
+    # We use high values to ensure they overwrite any existing 0 (free) or 1 (wall) cells
+    WALL_VALUE = 1
+    PATH_VALUE = 2       
+    START_VALUE = 3      
+    GOAL_VALUE = 4       
 
     # --- Marker Size Configuration ---
-    # This determines the "radius" or extent of the custom markers
-    marker_size = 5 # A size of 1 means a 3x3 square/cross; 2 means 5x5, etc.
+    marker_size = 5 
     # --- End Marker Size Configuration ---
 
     # Determine all buildings and floors needed for visualization
     required_viz = set((b, f) for b, f, _, _ in path)
     
-    # Structure to hold all coordinates to be colored for each (b_code, floor)
+    # Structure to hold all coordinates to be colored
     path_by_map = {map_id: [] for map_id in required_viz}
     
+    # --- 1. Map Path Coordinates ---
     for i in range(len(path) - 1):
         p1 = path[i]
         p2 = path[i+1]
@@ -347,7 +343,6 @@ def visualize_path(path, start, goal):
             path_by_map[(p2[0], p2[1])].append((p2[2], p2[3]))
             continue
             
-        # If same map, draw the line segment between key points
         b_code, floor = p1[0], p1[1]
         line_points_rc = get_points_on_line(p1, p2) 
 
@@ -355,58 +350,53 @@ def visualize_path(path, start, goal):
             path_by_map[(b_code, floor)].append((r, c))
             
     
-    # 2. Iterate through each map and draw the stored path
+    # --- 2. Iterate through each map and draw ---
     for (b_code, floor), coords in path_by_map.items():
         if b_code not in ALL_BUILDING_DATA or "grids" not in ALL_BUILDING_DATA[b_code] or floor not in ALL_BUILDING_DATA[b_code]["grids"]:
             continue
             
         grid_dimensions = ALL_BUILDING_DATA[b_code]["grids"][floor].shape
         rows, cols = grid_dimensions[0], grid_dimensions[1]
-        
-        vis = np.full((rows, cols), TRANSPARENT_BG, dtype=int)
-        
-        for r, c in coords:
-            if 0 <= r < vis.shape[0] and 0 <= c < vis.shape[1]:
-                vis[r, c] = PATH_VALUE # Path color
 
-        # --- Draw Larger Start Marker (Circle/Cross Shape) ---
+        # Use the base grid (walls 1, free 0) for the visualization canvas
+        vis = ALL_BUILDING_DATA[b_code]["grids"][floor].copy().astype(int)
+        
+        # --- Draw Path ---
+        for r, c in coords:
+            if 0 <= r < rows and 0 <= c < cols:
+                vis[r, c] = PATH_VALUE # Path color (will overwrite 0 or 1)
+
+        # --- Draw Larger Start Marker (Circle Shape) ---
         if (b_code, floor) == (start[0], start[1]):
             start_r, start_c = start[2], start[3]
             for dr in range(-marker_size, marker_size + 1):
                 for dc in range(-marker_size, marker_size + 1):
                     nr, nc = start_r + dr, start_c + dc
-                    # Draw a circular shape by checking distance from center
                     if 0 <= nr < rows and 0 <= nc < cols and (dr**2 + dc**2) <= marker_size**2:
-                        vis[nr, nc] = START_VALUE 
+                        vis[nr, nc] = START_VALUE # Overwrite all previous values
 
-        # --- Draw Larger Goal Marker (Triangle/Arrow Shape) ---
+        # --- Draw Larger Goal Marker (Arrow Shape) ---
         if (b_code, floor) == (goal[0], goal[1]):
             goal_r, goal_c = goal[2], goal[3]
             for dr in range(-marker_size, marker_size + 1):
                 for dc in range(-marker_size, marker_size + 1):
                     nr, nc = goal_r + dr, goal_c + dc
-                    # Draw an arrow/triangle shape pointing "up" (decreasing row index)
-                    # This is a simple approximation; can be made more sophisticated.
                     if 0 <= nr < rows and 0 <= nc < cols:
-                        # Simple triangle: more pixels at the bottom, fewer at the top
-                        # e.g., for marker_size=2:
-                        # (0,0) center
-                        # (-2,-2) (-2,-1) (-2,0) (-2,1) (-2,2)
-                        # (-1,-1) (-1,0) (-1,1)
-                        # (0,0)
-                        if dr <= 0 and abs(dc) <= (marker_size + dr): # Inverted for typical grid rendering
-                             vis[nr, nc] = GOAL_VALUE
-
-
-        # --- Matplotlib Plotting & Saving ---
-        plt.figure(figsize=(8, 8 * (rows / cols)), facecolor='none') 
+                        if dr <= 0 and abs(dc) <= (marker_size + dr): 
+                            vis[nr, nc] = GOAL_VALUE # Overwrite all previous values
+                            
+        # --- Matplotlib Plotting & Saving (Reverting to original style) ---
+        plt.figure(figsize=(8, 8 * (rows / cols))) 
         
-        plt.imshow(vis, cmap=custom_cmap, norm=norm, interpolation='nearest') 
-        
+        # Use a single default color map (like 'viridis' or 'plasma') which gives the purple/green look
+        # and lets the path/markers overwrite the background colors smoothly.
+        plt.imshow(vis, cmap='viridis', interpolation='nearest') 
+        plt.title(f"Building {b_code} - Floor {floor} Path")
         plt.axis('off') 
         
-        out_path = os.path.join(OUT_DIR, f"{b_code}_floor{floor}_path_overlay.png")
-        plt.savefig(out_path, transparent=True, bbox_inches='tight', pad_inches=0) 
+        # Save the single, full image
+        out_path_full = os.path.join(OUT_DIR, f"{b_code}_floor{floor}_path_full.png")
+        plt.savefig(out_path_full, bbox_inches='tight', pad_inches=0) 
         plt.close()
 
 def is_line_of_sight(p1, p2):
