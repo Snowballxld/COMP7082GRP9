@@ -11,16 +11,18 @@
 </head>
 <body>
   <%- include('_menu', { page: 'map' }) %>
-
   <main class="map-page">
-    <div class="map-container" id="map">
+
+    <div class="map-container" id="insert-map">
+      
       <!-- Interactive map will render here -->
+       <%- include('bcit-map') %>
     </div>
   </main>
 
   <!-- Include Mapbox or Google Maps JS -->
   <!-- Example for Mapbox -->
   <script src='https://api.mapbox.com/mapbox-gl-js/v2.20.0/mapbox-gl.js'></script>
-  <script src="/js/map.js"></script>
+  
 </body>
 </html>

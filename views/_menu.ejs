@@ -29,12 +29,26 @@
         </li>
 
         <li>
+          <% if(page === 'favorites'){ %>
+            <span class="active">Favorites</span>
+          <% } else { %>
+            <a href="/favorites" class="<%= page === 'favorites' ? 'active' : '' %>">Favorites</a>
+          <% } %>
+        </li>
+        
+        <li>
             <% if(page === 'about'){ %>
             <span class="active">About</span>
             <% } else { %>
             <a href="/about" class="<%= page === 'about' ? 'active' : '' %>">About</a>
             <% } %>
         </li>
+
+        <!-- Login/Logout Link -->
+        <li id="authLink">
+          <a href="/auth/login" class="<%= page === 'login' ? 'active' : '' %>">Login</a>
+        </li>
+        
         </ul>
 
     </nav>
@@ -42,3 +56,19 @@
 </header>
 
 <script src="/js/menu.js"></script>
+
+<script>
+  // Simple toggle for logout in menu if user authenticated (client-side)
+  document.addEventListener('DOMContentLoaded', () => {
+    const user = localStorage.getItem('user');
+    const authLink = document.getElementById('authLink');
+    if (user && authLink) {
+      authLink.innerHTML = '<a href="#" id="logoutBtn">Logout</a>';
+      document.getElementById('logoutBtn').addEventListener('click', async () => {
+        localStorage.removeItem('user');
+        await fetch('/auth/sessionLogout', { method: 'POST' });
+        window.location.href = '/';
+      });
+    }
+  });
+</script>

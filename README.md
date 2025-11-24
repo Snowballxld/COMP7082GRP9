@@ -1,39 +1,82 @@
-"# COMP7082GRP9" 
+COMP7082GRP9
+This project is a Campus Map Navigator web app with Node.js, Express, and Firebase authentication.
 
-After all setup is complete, you can start the server with
+Table of Contents
+Prerequisites
+Environment Setup
+Firebase Setup
+Install Dependencies
+Run the Server
+Authentication & Routes
+Notes
 
-npm start
-
-setup of environment, message me if any problems
-
-1. Install Git (with Git Bash)
-
+Prerequisites
+Git
 Download from: https://git-scm.com/download/win
-
-During install:
-
-Choose Visual Studio Code as the editor (optional).
-Choose Git from command line and 3rd-party software.
-Install Git Bash terminal.
-
-2. Install Node.js + npm
-
+Optional: Choose Visual Studio Code as editor
+Choose Git from command line and 3rd-party software
+Node.js + npm
 Download LTS version: https://nodejs.org
-Run installer (check Add to PATH).
-📌 Verify install:
+Verify installation:
 node -v
 npm -v
 
-3. Install Dependencies
+Environment Setup
+Copy .env.example to .env:
+cp .env.example .env
 
+Update the following in .env:
+FIREBASE_SERVICE_ACCOUNT_KEY='{"type":"service_account","project_id":"..."}'
+FIREBASE_API_KEY=your_web_api_key
+FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+FIREBASE_PROJECT_ID=your_project_id
+SESSION_SECRET=your_session_secret
+
+Firebase Setup
+Go to Firebase Console
+Create a new project.
+Enable Authentication → Sign-in method → Email/Password.
+Generate a Service Account Key:
+Settings → Project Settings → Service accounts → Generate new private key
+Save JSON content
+Copy JSON content into FIREBASE_SERVICE_ACCOUNT_KEY in .env
+
+Install Dependencies
 npm install
 
-4. Run the Server
+The server uses: express, firebase-admin, express-session, winston, chalk, morgan, and dotenv.
 
+Run the Server
 npm start
 
-5. Go to localhost:5000
+Visit http://localhost:5000
 
-NOTE: express is now "express": "^4.21.2" because of the routing issues.
+Authentication & Routes
+Login: /auth/login
+Sign Up: /auth/signup
+Logout: /auth/logout
 
-if you have any issues please contact Adam
+Session Management
+Sessions are stored in express-session (server memory by default).
+Middleware checkSession protects routes:
+import { checkSession } from './middleware/authMiddleware.js';
+app.get('/nodes', checkSession, (req, res) => {
+  res.render('nodes', { user: req.session.user });
+});
+
+Protected Routes
+/api/nodes → Requires checkSession
+/map → Requires checkSession
+
+API Responses
+Login / logout endpoints return JSON:
+{ "status": "success" }
+{ "status": "logged out" }
+{ "error": "Invalid token" }
+
+Unauthorized access redirects to /auth/login.
+
+Notes
+Firebase Admin SDK is used on the backend to verify ID tokens.
+Logs are saved in logs/ with daily rotation. Critical Firebase/auth errors are also stored in Firestore.
+If you encounter issues, contact Adam Van Woerden.
