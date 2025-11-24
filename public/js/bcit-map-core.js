@@ -511,6 +511,15 @@ mappings = {
               "V1sdLc0eMnyteBX2sIZg",
               "AKqKqS0acPUMAOxqT9mt",
               "yIRjTdLiojB94pfR1EkL"
+            ],
+            "SW3": [
+              "USSskvVDADEHwNi6gM1z",
+              "bvxgjQTQnwcmX3Nlx5xG",
+              "gmlstBCtf9yFlYVwfj6j"
+            ],
+            "SW5": [
+              "W8FqDrl1CLrSWGcr9vKF",
+              "KNaebx1eeVllD7deAFJp"
             ]
         }
     ]
