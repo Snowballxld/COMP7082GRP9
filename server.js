@@ -9,6 +9,7 @@ import route from "./routes/route.js";
 import nodeRoutes from "./routes/nodes.js";
 import authRouter from './routes/auth.js';
 import favoritesRouter from "./routes/favorites.js";
+import calibratorRouter from "./routes/calibrator.js";
 
 import { requestLogger } from "./middleware/logger.js";
 import { errorHandler } from './middleware/errorHandler.js';
@@ -54,6 +55,7 @@ app.use(
 app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
 
+app.use("/calibrator", calibratorRouter);
 app.use('/auth', authRouter);
 app.use("/api/nodes", nodeRoutes(db));
 app.use("/api/favorites", favoritesRouter);
