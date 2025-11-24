@@ -10,7 +10,7 @@ body {
 #map {
   position: relative;        /* so the search/floor panel position correctly */
   width: 100%;
-  height: calc(100vh - 140px); /* adjust 140px if your header is taller/shorter */
+  height: 100%; /* adjust 140px if your header is taller/shorter */
   /* or just use height: 100vh; if you want full screen */
 }
 

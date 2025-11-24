@@ -21,7 +21,7 @@ body {
 header {
   background: #007acc;
   color: #fff;
-  padding: 1rem;
+  padding: 0;
 }
 
 .nav-container {
@@ -35,7 +35,7 @@ header {
 .site-title {
   color: #fff;
   font-size: 2rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 nav {
@@ -243,14 +243,14 @@ nav {
   align-items: center;
   justify-content: center;
   background: linear-gradient(to right, #f0f8ff, #ffffff);
-  padding: 2rem;
+  padding: 0;
 }
 
 .map-container {
   width: 100%;
   max-width: 1000px;
   height: 600px;
-  border: 2px solid #007acc;
+  border: 3px solid #007acc;
   border-radius: 8px;
 }
 
