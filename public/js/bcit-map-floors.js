@@ -27,6 +27,38 @@
 
     let roomPopup = null;
 
+    // Floors derived from room-search-index.json
+    // Shape: { "SW3": ["1","2"], ... }
+    let roomFloorsIndex = {};
+
+    (async function loadRoomFloorsIndex() {
+      try {
+        const res = await fetch("/data/room-search-index.json", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const json = await res.json();
+        const byBuilding = {};
+
+        if (Array.isArray(json.rooms)) {
+          for (const r of json.rooms) {
+            const b = (r.building || "").trim().toUpperCase();
+            const f = (r.floor || "").trim();
+            if (!b || !f) continue;
+            if (!byBuilding[b]) byBuilding[b] = new Set();
+            byBuilding[b].add(f);
+          }
+        }
+
+        roomFloorsIndex = {};
+        Object.keys(byBuilding).forEach((b) => {
+          roomFloorsIndex[b] = Array.from(byBuilding[b]);
+        });
+      } catch (e) {
+        // fail silently; floorLabels on building props will still work
+      }
+    })();
+
     // ---------------- Selected-building highlight ----------------
     function ensureSelectedLayer() {
       if (!map.getSource(SEL_SRC)) {
@@ -248,6 +280,26 @@
       renderFloorPanel();
     };
 
+    // Decide floor labels for a building:
+    // 1) from room-search-index.json (roomFloorsIndex)
+    // 2) fallback to building properties.floorLabels
+    // 3) finally, ["1"] so there is at least one button
+    function deriveFloorLabels(buildingCode, props) {
+      const codeUpper = String(buildingCode || "").trim().toUpperCase();
+      let labels = null;
+
+      const fromIndex = codeUpper && roomFloorsIndex[codeUpper];
+      if (fromIndex && fromIndex.length) {
+        labels = fromIndex.map(String);
+      } else if (Array.isArray(props.floorLabels) && props.floorLabels.length) {
+        labels = props.floorLabels.map(String);
+      } else {
+        labels = ["1"];
+      }
+
+      return sortFloorsBottomFirst(labels);
+    }
+
     const hideBuildingShape = (buildingFeature) => {
       const p = buildingFeature.properties || {};
       const code = (p.BuildingName || p.Display_Name || p.SiteName || "").trim();
@@ -428,12 +480,8 @@
       currentBuildingLabel =
         p.BuildingName || p.Display_Name || p.SiteName || buildingCode;
 
-      // Floors: from floorLabels or default to ["1"]
-      let floorLabels =
-        Array.isArray(p.floorLabels) && p.floorLabels.length
-          ? p.floorLabels.map(String)
-          : ["1"];
-      floorLabels = sortFloorsBottomFirst(floorLabels);
+      // Floors: auto from room index, then props.floorLabels, else ["1"]
+      let floorLabels = deriveFloorLabels(buildingCode, p);
       currentFloorList = floorLabels;
       currentFloorLabel = floorLabels[0] || "1";
 
@@ -527,11 +575,7 @@
       currentBuildingLabel =
         bp.BuildingName || bp.Display_Name || bp.SiteName || code;
 
-      let floorLabels =
-        Array.isArray(bp.floorLabels) && bp.floorLabels.length
-          ? bp.floorLabels.map(String)
-          : ["1"];
-      floorLabels = sortFloorsBottomFirst(floorLabels);
+      let floorLabels = deriveFloorLabels(code, bp);
       currentFloorList = floorLabels;
 
       const requestedFloor = floor ? String(floor) : "";
