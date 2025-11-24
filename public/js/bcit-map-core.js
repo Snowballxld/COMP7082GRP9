@@ -16,7 +16,7 @@ window.addEventListener("DOMContentLoaded", () => {
   mapboxgl.accessToken = token;
 
   // --- Map setup ---
-  const BCIT_BURNABY = { lng: -123, lat: 49.251 };
+  const BCIT_BURNABY = { lng: -123.001, lat: 49.251 }; // tweak if needed
   const map = new mapboxgl.Map({
     container: "map",
     style: "mapbox://styles/mapbox/streets-v12",
@@ -24,15 +24,30 @@ window.addEventListener("DOMContentLoaded", () => {
     zoom: 15.3,
   });
 
+  // Controls
   map.addControl(new mapboxgl.NavigationControl(), "top-right");
   map.addControl(new mapboxgl.FullscreenControl(), "top-right");
-  map.addControl(
-    new mapboxgl.GeolocateControl({
-      positionOptions: { enableHighAccuracy: true },
-      trackUserLocation: true,
-    }),
-    "top-right"
-  );
+
+  // Geolocate control + track user location
+  const geoControl = new mapboxgl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+    trackUserLocation: true,
+  });
+  map.addControl(geoControl, "top-right");
+
+  let lastUserLocation = null;
+  geoControl.on("geolocate", (e) => {
+    lastUserLocation = {
+      lng: e.coords.longitude,
+      lat: e.coords.latitude,
+    };
+  });
+
+  // Ensure map container is positioned (for overlays)
+  const mapContainer = document.getElementById("map");
+  if (mapContainer && getComputedStyle(mapContainer).position === "static") {
+    mapContainer.style.position = "relative";
+  }
 
   // ----------------- Shared helpers (exported to plugins) -----------------
   const getJSON = async (url) => {
@@ -192,7 +207,283 @@ window.addEventListener("DOMContentLoaded", () => {
   `;
   };
 
-  // ----------------- Map load + building layers -----------------
+  // ----------------- Navigation UI + state -----------------
+  let navPanel = null;
+  let navFromLabelEl = null;
+  let navToLabelEl = null;
+  let navActive = false;
+
+  let startMarker = null;
+  let endMarker = null;
+
+  let customStartLocation = null; // { lng, lat }
+  let customStartLabel = null;    // e.g. "SW3 · 1750"
+  let customStartMarker = null;
+
+  // Helper: build clean labels like "SW3 · 1750"
+  function makeRoomLabel(building, floor, room) {
+    const b = String(building || "").trim();
+    const f = String(floor || "").trim();
+    const r = String(room || "").trim();
+
+    // Extract pure room number if room includes building prefix (e.g. "SW3-1750")
+    let pureRoom = r;
+    if (b && r.startsWith(b + "-")) {
+      pureRoom = r.slice(b.length + 1); // remove "SW3-"
+    }
+
+    if (b && pureRoom) return `${b} · ${pureRoom}`;
+    if (b && f)        return `${b} · Floor ${f}`;
+    if (b)             return b;
+    if (pureRoom)      return pureRoom;
+
+    return "Selected point";
+  }
+
+  const ensureNavPanel = () => {
+    if (navPanel || !mapContainer) return;
+
+    navPanel = document.createElement("div");
+    navPanel.id = "bcit-nav-panel";
+    navPanel.style.position = "absolute";
+    navPanel.style.top = "10px";
+    navPanel.style.left = "50%";
+    navPanel.style.transform = "translateX(-50%)";
+    navPanel.style.background = "white";
+    navPanel.style.borderRadius = "999px";
+    navPanel.style.boxShadow = "0 2px 8px rgba(0,0,0,0.25)";
+    navPanel.style.padding = "6px 10px";
+    navPanel.style.display = "none";
+    navPanel.style.zIndex = "30";
+    navPanel.style.fontFamily =
+      "system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+    navPanel.style.fontSize = "12px";
+    navPanel.style.maxWidth = "420px";
+
+    navPanel.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+            <div style="width:8px;height:8px;border-radius:999px;background:#3b82f6;"></div>
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              <span style="color:#6b7280;">From</span>
+              <span id="bcit-nav-from" style="font-weight:600;margin-left:4px;"></span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="width:8px;height:8px;border-radius:999px;background:#ef4444;"></div>
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              <span style="color:#6b7280;">To</span>
+              <span id="bcit-nav-to" style="font-weight:600;margin-left:4px;"></span>
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          id="bcit-nav-close"
+          aria-label="Clear route"
+          style="
+            border:none;
+            background:transparent;
+            cursor:pointer;
+            padding:4px;
+            margin-left:4px;
+            font-size:16px;
+            line-height:1;
+            color:#6b7280;
+          ">
+          ×
+        </button>
+      </div>
+    `;
+
+    mapContainer.appendChild(navPanel);
+
+    navFromLabelEl = navPanel.querySelector("#bcit-nav-from");
+    navToLabelEl = navPanel.querySelector("#bcit-nav-to");
+
+    const closeBtn = navPanel.querySelector("#bcit-nav-close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        clearNavigation();
+      });
+    }
+  };
+
+  const renderNavPanel = (fromLabel, toLabel) => {
+    ensureNavPanel();
+    if (!navPanel) return;
+
+    if (!navActive) {
+      navPanel.style.display = "none";
+      return;
+    }
+
+    if (navFromLabelEl) navFromLabelEl.textContent = fromLabel || "";
+    if (navToLabelEl) navToLabelEl.textContent = toLabel || "";
+    navPanel.style.display = "block";
+  };
+
+  const clearNavigation = () => {
+    navActive = false;
+
+    if (startMarker) {
+      startMarker.remove();
+      startMarker = null;
+    }
+    if (endMarker) {
+      endMarker.remove();
+      endMarker = null;
+    }
+
+    const navSrc = map.getSource("nav-route");
+    if (navSrc) {
+      navSrc.setData({
+        type: "FeatureCollection",
+        features: [],
+      });
+    }
+
+    if (navPanel) {
+      navPanel.style.display = "none";
+    }
+    // custom start marker stays so you can reuse it
+  };
+
+  const clearCustomStart = () => {
+    customStartLocation = null;
+    customStartLabel = null;
+    if (customStartMarker) {
+      customStartMarker.remove();
+      customStartMarker = null;
+    }
+  };
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      clearNavigation();
+    }
+  });
+
+  const setRouteLine = (startLngLat, endLngLat) => {
+    const navSrc = map.getSource("nav-route");
+    if (!navSrc) return;
+    navSrc.setData({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: [startLngLat, endLngLat],
+          },
+        },
+      ],
+    });
+  };
+
+  const setCustomStartLocation = (lng, lat, label) => {
+    if (typeof lng !== "number" || typeof lat !== "number") return;
+    customStartLocation = { lng, lat };
+    customStartLabel = label || "Selected point";
+
+    if (customStartMarker) {
+      customStartMarker.setLngLat([lng, lat]);
+    } else {
+      customStartMarker = new mapboxgl.Marker({
+        color: "#16a34a", // green
+      })
+        .setLngLat([lng, lat])
+        .addTo(map);
+    }
+  };
+
+  // Called from room popup: "Set as start"
+  const setStartFromRoom = (payload) => {
+    if (!payload) return;
+    const lng =
+      typeof payload.lng === "number" ? payload.lng : null;
+    const lat =
+      typeof payload.lat === "number" ? payload.lat : null;
+    if (lng == null || lat == null) return;
+
+    const building = (payload.building || "").trim();
+    const room = (payload.room || "").trim();
+    const floor = (payload.floor || "").trim();
+
+    const label = makeRoomLabel(building, floor, room);
+    setCustomStartLocation(lng, lat, label);
+  };
+
+  // Called from room popup: "Navigate here"
+  const navigateToRoom = (payload) => {
+    if (!payload) return;
+
+    ensureNavPanel();
+
+    const destLng =
+      typeof payload.lng === "number" ? payload.lng : null;
+    const destLat =
+      typeof payload.lat === "number" ? payload.lat : null;
+
+    if (destLng == null || destLat == null) {
+      console.warn("[BCIT MAP] navigateToRoom called without lng/lat.");
+      return;
+    }
+
+    // ----- Decide start point -----
+    let startLngLat = null;
+    let fromLabel = "";
+
+    if (customStartLocation) {
+      startLngLat = [customStartLocation.lng, customStartLocation.lat];
+      fromLabel = customStartLabel || "Selected point";
+    } else if (lastUserLocation) {
+      startLngLat = [lastUserLocation.lng, lastUserLocation.lat];
+      fromLabel = "Your location";
+    } else {
+      const center = map.getCenter();
+      startLngLat = [center.lng, center.lat];
+      fromLabel = "Map center";
+    }
+
+    const endLngLat = [destLng, destLat];
+
+    // Build "To" label like "SW5 · 1850"
+    const b = (payload.building || "").trim();
+    const r = (payload.room || "").trim();
+    const f = (payload.floor || "").trim();
+    const toLabel = makeRoomLabel(b, f, r);
+
+    // Clear existing route (but keep custom start marker)
+    clearNavigation();
+
+    // Start marker (blue)
+    startMarker = new mapboxgl.Marker({ color: "#3b82f6" })
+      .setLngLat(startLngLat)
+      .addTo(map);
+
+    // End marker (red)
+    endMarker = new mapboxgl.Marker({ color: "#ef4444" })
+      .setLngLat(endLngLat)
+      .addTo(map);
+
+    // Line between them
+    setRouteLine(startLngLat, endLngLat);
+
+    // Zoom to show both
+    map.fitBounds([startLngLat, endLngLat], {
+      padding: 120,
+      maxZoom: 18,
+      duration: 800,
+    });
+
+    navActive = true;
+    renderNavPanel(fromLabel, toLabel);
+  };
+
+  // ----------------- Map load + building layers + nav route -----------------
   map.on("load", async () => {
     const [buildings, buildingsIndex] = await Promise.all([
       getJSON("/data/bcit-coordinates.geojson"),
@@ -215,16 +506,12 @@ window.addEventListener("DOMContentLoaded", () => {
       paint: { "line-color": "#2563eb", "line-width": 1.2 },
     });
 
-    map.on(
-      "mouseenter",
-      "buildings-fill",
-      () => (map.getCanvas().style.cursor = "pointer")
-    );
-    map.on(
-      "mouseleave",
-      "buildings-fill",
-      () => (map.getCanvas().style.cursor = "")
-    );
+    map.on("mouseenter", "buildings-fill", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+    map.on("mouseleave", "buildings-fill", () => {
+      map.getCanvas().style.cursor = "";
+    });
 
     // Highlight source/layer for selected building
     const selSrc = "building-selected";
@@ -241,7 +528,26 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Expose map + utils if needed
+    // Route source/layer
+    if (!map.getSource("nav-route")) {
+      map.addSource("nav-route", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      map.addLayer({
+        id: "nav-route-line",
+        type: "line",
+        source: "nav-route",
+        paint: {
+          "line-color": "#0ea5e9",
+          "line-width": 4,
+          "line-opacity": 0.9,
+        },
+      });
+    }
+
+    // Expose map + utils + navigation API
     const utils = {
       getJSON,
       asLines,
@@ -252,9 +558,18 @@ window.addEventListener("DOMContentLoaded", () => {
       filterExistingPDFs,
       buildPopupHTML,
     };
-    window.BCITMap = { map, utils };
 
-    // Run plugins
+    window.BCITMap = window.BCITMap || {};
+    window.BCITMap.map = map;
+    window.BCITMap.utils = utils;
+    window.BCITMap.navigateToRoom = navigateToRoom;
+    window.BCITMap.clearNavigation = clearNavigation;
+    window.BCITMap.geolocateControl = geoControl;
+    window.BCITMap.setCustomStartLocation = setCustomStartLocation;
+    window.BCITMap.clearCustomStart = clearCustomStart;
+    window.BCITMap.setStartFromRoom = setStartFromRoom;
+
+    // Run plugins (floors, search, etc.)
     const plugins = window.BCITMapPlugins || [];
     plugins.forEach((fn) => {
       try {

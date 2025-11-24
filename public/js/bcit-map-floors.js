@@ -2,12 +2,8 @@
 (function () {
   window.BCITMapPlugins = window.BCITMapPlugins || [];
   window.BCITMapPlugins.push(function attachBuildingFloors(map, utils) {
-    const {
-      getJSON,
-      geometryBounds,
-      sortFloorsBottomFirst,
-      roughCenter,
-    } = utils;
+    const { getJSON, geometryBounds, sortFloorsBottomFirst, roughCenter } =
+      utils;
 
     const FLOOR_SRC = "building-floor";
     const FLOOR_FILL_LAYER = "building-floor-fill";
@@ -159,7 +155,11 @@
     if (mapContainer) mapContainer.appendChild(floorPanel);
 
     const renderFloorPanel = () => {
-      if (!currentBuildingCode || !currentFloorList || !currentFloorList.length) {
+      if (
+        !currentBuildingCode ||
+        !currentFloorList ||
+        !currentFloorList.length
+      ) {
         floorPanel.style.display = "none";
         floorPanel.innerHTML = "";
         return;
@@ -285,7 +285,9 @@
     // 2) fallback to building properties.floorLabels
     // 3) finally, ["1"] so there is at least one button
     function deriveFloorLabels(buildingCode, props) {
-      const codeUpper = String(buildingCode || "").trim().toUpperCase();
+      const codeUpper = String(buildingCode || "")
+        .trim()
+        .toUpperCase();
       let labels = null;
 
       const fromIndex = codeUpper && roomFloorsIndex[codeUpper];
@@ -302,7 +304,12 @@
 
     const hideBuildingShape = (buildingFeature) => {
       const p = buildingFeature.properties || {};
-      const code = (p.BuildingName || p.Display_Name || p.SiteName || "").trim();
+      const code = (
+        p.BuildingName ||
+        p.Display_Name ||
+        p.SiteName ||
+        ""
+      ).trim();
       if (!code) return;
 
       const filter = [
@@ -369,7 +376,7 @@
         floor: String(floor || "").trim(),
         room: String(room || "").trim(),
         type: rawType || "room",
-        ...lngLatPayload,
+        ...lngLatPayload, // { lng, lat } from the room shape center
       };
       const payloadStr = JSON.stringify(navPayload).replace(/"/g, "&quot;");
 
@@ -379,7 +386,7 @@
       const subtitle = labelParts.join(" · ");
 
       return `
-        <div style="font-family:system-ui;min-width:200px;">
+        <div style="font-family:system-ui;min-width:220px;">
           <div style="font-weight:600;font-size:1rem;margin-bottom:.25rem;">
             ${room}
           </div>
@@ -393,29 +400,55 @@
               ? `<div style="font-size:.8rem;color:#6b7280;margin-bottom:.5rem;">Type: <strong>${typeLabel}</strong></div>`
               : ""
           }
-          <button
-            style="
-              padding:.35rem .65rem;
-              border-radius:6px;
-              border:1px solid #2563eb;
-              background:#2563eb;
-              color:white;
-              font-size:.85rem;
-              cursor:pointer;
-            "
-            onclick="window.BCITMap && window.BCITMap.navigateToRoom && window.BCITMap.navigateToRoom(${payloadStr});">
-            Navigate here
-          </button>
+          <div style="display:flex;gap:.4rem;margin-top:.35rem;">
+            <button
+              style="
+                padding:.35rem .65rem;
+                border-radius:6px;
+                border:1px solid #16a34a;
+                background:#16a34a;
+                color:white;
+                font-size:.8rem;
+                cursor:pointer;
+                white-space:nowrap;
+              "
+              onclick="window.BCITMap && window.BCITMap.setStartFromRoom && window.BCITMap.setStartFromRoom(${payloadStr});">
+              Set as start
+            </button>
+            <button
+              style="
+                padding:.35rem .65rem;
+                border-radius:6px;
+                border:1px solid #2563eb;
+                background:#2563eb;
+                color:white;
+                font-size:.8rem;
+                cursor:pointer;
+                white-space:nowrap;
+              "
+              onclick="window.BCITMap && window.BCITMap.navigateToRoom && window.BCITMap.navigateToRoom(${payloadStr});">
+              Navigate here
+            </button>
+          </div>
         </div>
       `;
     };
 
+
     const showRoomPopupForFeature = (feat, lngLatFallback) => {
-      const center = roughCenter(feat.geometry) || lngLatFallback;
+      // center as [lng, lat]
+      const centerFromGeom = roughCenter(feat.geometry);
+      const centerFromClick =
+        lngLatFallback && typeof lngLatFallback.lng === "number"
+          ? [lngLatFallback.lng, lngLatFallback.lat]
+          : null;
+
+      const center = centerFromGeom || centerFromClick;
       if (!center) return;
 
       const props = feat.properties || {};
-      const html = buildRoomPopupHTML(props, {});
+      const lngLatPayload = { lng: center[0], lat: center[1] };
+      const html = buildRoomPopupHTML(props, lngLatPayload);
 
       clearRoomPopup();
       roomPopup = new mapboxgl.Popup({
@@ -427,6 +460,7 @@
         .setHTML(html)
         .addTo(map);
     };
+
 
     // ESC → clear overlay
     window.addEventListener("keydown", (e) => {
@@ -460,13 +494,14 @@
       if (!f) return;
       const p = f.properties || {};
 
-      const buildingCode =
-        (p.BuildingName ||
-          p.Display_Name ||
-          p.SiteName ||
-          p.BldgCode ||
-          p.code ||
-          "").trim();
+      const buildingCode = (
+        p.BuildingName ||
+        p.Display_Name ||
+        p.SiteName ||
+        p.BldgCode ||
+        p.code ||
+        ""
+      ).trim();
       if (!buildingCode) return;
 
       // Clicking same building toggles off
