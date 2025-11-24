@@ -216,6 +216,7 @@
 
     // ------------------- Actual search operations -------------------
     function searchRoomExact(item) {
+
       if (
         window.BCITMap &&
         typeof window.BCITMap.focusRoom === "function"
@@ -233,6 +234,12 @@
     }
 
     function searchByBuilding(buildingCode) {
+      console.log("searching by building")
+
+      window.highlightPathTo({
+        building: buildingCode
+      });
+
       const code = (buildingCode || "").trim().toUpperCase();
       if (!code) return;
 

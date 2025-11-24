@@ -486,21 +486,60 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 // ---------------------- Node Paths Rendering and Pathing -------------------
+mappings = {
+    "buildings": [
+        {
+            "SE2": [],
+            "SE6": [],
+            "SE8": [],
+            "SE9": [],
+            "SE12": [
+                "gKvd6XdaIiHcfr85GkUF",
+                "m6biNg1zOP4LjEJggXNq",
+                "8TKg5bDrGREkBUZdpOx9"
+            ],
+            "SE10": [],
+            "SE14": []
+        }
+    ]
+}
+
 
 // Toggle: true = show ALL connections, false = only show computed path
-const SHOW_ALL_LINKS = true;
+const SHOW_ALL_LINKS = false;
 
-  // --- Pull nodes from backend API and render markers ---
-async function loadNodes() {
-  console.log("loadNodes() fired");
+window.highlightPathTo = async function ({building}) {
+  console.log("test from highlight path")
+  console.log(building)
+
+  // 1 get nodes for building
+  possible_nodes = values = mappings["buildings"][0][building]
+  console.log(possible_nodes)
+
+  // 2 get current position OR default position if not available
+  current_location = [-122.99999, 49.25097]
+
+  // 3 from building nodes find the closest node to current position
+  loadNodes(current_location, possible_nodes)
+
+  // 4 Djikstra the optimal route
+
+  // 5 render route
+}
+
+async function loadNodes(startCoord = null, endNodeList = []) {
+  console.log("start coord: " + startCoord);
+  console.log("end nodes: " + endNodeList)
   try {
     const res = await fetch("/api/nodes/data");
     if (!res.ok) throw new Error("Failed to load nodes");
 
     const nodes = await res.json();
-    const nodeMap = new Map(); // id -> [lng, lat]
+    const nodeMap = new Map(); // nodeId -> [lng, lat]
 
-    // Step 1: Add markers and record positions
+    //----------------------------------------------------
+    // STEP 1 — Add markers and record node positions
+    //----------------------------------------------------
     nodes.forEach((node) => {
       if (node.long && node.lat) {
         const coords = [parseFloat(node.long), parseFloat(node.lat)];
@@ -514,21 +553,26 @@ async function loadNodes() {
       }
     });
 
-    // Step 2: Build weighted graph
+    //----------------------------------------------------
+    // STEP 2 — Haversine function + Graph builder
+    //----------------------------------------------------
     function haversineDistance(coord1, coord2) {
       const R = 6371e3;
-      const toRad = (deg) => (deg * Math.PI) / 180;
+      const toRad = (d) => (d * Math.PI) / 180;
+
       const [lng1, lat1] = coord1;
       const [lng2, lat2] = coord2;
+
       const φ1 = toRad(lat1);
       const φ2 = toRad(lat2);
       const Δφ = toRad(lat2 - lat1);
       const Δλ = toRad(lng2 - lng1);
+
       const a =
         Math.sin(Δφ / 2) ** 2 +
         Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
+
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     const graph = new Map();
@@ -537,134 +581,148 @@ async function loadNodes() {
       if (node.connections) {
         const connections = node.connections.split(",").map((id) => id.trim());
         graph.set(node.id, []);
+
         const start = nodeMap.get(node.id);
+
         connections.forEach((connId) => {
           const end = nodeMap.get(connId);
           if (start && end) {
-            const distance = haversineDistance(start, end);
-            graph.get(node.id).push({ id: connId, weight: distance });
+            const dist = haversineDistance(start, end);
+            graph.get(node.id).push({ id: connId, weight: dist });
           }
         });
       }
     });
 
-    // --- OPTIONAL: draw all node links ---
-if (SHOW_ALL_LINKS) {
-  const allLines = {
-    type: "FeatureCollection",
-    features: []
-  };
+    //----------------------------------------------------
+    // Determine start & end dynamically
+    //----------------------------------------------------
+    let startId = null;
+    let endId = null;
 
-  graph.forEach((edges, id) => {
-    const start = nodeMap.get(id);
-    edges.forEach(edge => {
-      const end = nodeMap.get(edge.id);
-      if (start && end) {
-        allLines.features.push({
-          type: "Feature",
-          geometry: { type: "LineString", coordinates: [start, end] }
-        });
-      }
-    });
-  });
+    // 1. Find closest node to given starting long/lat
+    if (startCoord) {
+      console.log("userpoint: " + startCoord)
 
-  map.addSource("all-links", { type: "geojson", data: allLines });
-  map.addLayer({
-    id: "all-links-line",
-    type: "line",
-    source: "all-links",
-    paint: {
-      "line-color": "red",
-      "line-width": 5,
-      "line-opacity": 0.8
+      let best = Infinity;
+
+      nodeMap.forEach((coords, nodeId) => {
+        const d = haversineDistance(coords, startCoord);
+        if (d < best) {
+          best = d;
+          startId = nodeId;
+        }
+      });
     }
-  });
 
-  // If we're showing all links, do NOT draw shortest path.
-  return;
-}
+    // 2. Find closest node from provided destination list
+    if (endNodeList.length > 0) {
+      let best = Infinity;
 
+      endNodeList.forEach((candidateId) => {
+        const coords = nodeMap.get(candidateId);
+        if (!coords) {
+          console.log("can't get coords");
+          return;
+        }
+        console.log("end coords" + coords)
 
-    // Step 3: Dijkstra
+        // If user provided startCoord, measure from that,
+        // else measure from start node.
+        const refPoint = startCoord
+
+        const d = haversineDistance(coords, refPoint);
+        if (d < best) {
+          best = d;
+          endId = candidateId;
+        }
+      });
+    }
+
+    console.log("Computed start:", startId);
+    console.log("Computed end:", endId);
+
+    // Safety
+    if (!startId || !endId) {
+      console.warn("Could not determine start or end node.");
+      return;
+    }
+
+    console.log("Computed start:", startId);
+    console.log("Computed end:", endId);
+
+    //----------------------------------------------------
+    // STEP 3 — Dijkstra
+    //----------------------------------------------------
     function dijkstra(graph, startId, endId) {
-      const distances = new Map();
-      const previous = new Map();
+      const dist = new Map();
+      const prev = new Map();
       const pq = new Set(graph.keys());
 
-      graph.forEach((_, nodeId) => distances.set(nodeId, Infinity));
-      distances.set(startId, 0);
+      graph.forEach((_, id) => dist.set(id, Infinity));
+      dist.set(startId, 0);
 
       while (pq.size > 0) {
-        let current = null;
-        let smallest = Infinity;
-        for (const nodeId of pq) {
-          const dist = distances.get(nodeId);
-          if (dist < smallest) {
-            smallest = dist;
-            current = nodeId;
+        let bestNode = null;
+        let bestDist = Infinity;
+
+        for (const id of pq) {
+          if (dist.get(id) < bestDist) {
+            bestDist = dist.get(id);
+            bestNode = id;
           }
         }
 
-        if (current === null) break;
-        pq.delete(current);
+        if (!bestNode) break;
+        pq.delete(bestNode);
 
-        if (current === endId) {
+        if (bestNode === endId) {
           const path = [];
-          let temp = endId;
-          while (temp) {
-            path.unshift(temp);
-            temp = previous.get(temp);
+          let cur = endId;
+          while (cur) {
+            path.unshift(cur);
+            cur = prev.get(cur);
           }
           return path;
         }
 
-        const neighbors = graph.get(current) || [];
-        for (const { id: neighbor, weight } of neighbors) {
-          const alt = distances.get(current) + weight;
-          if (alt < distances.get(neighbor)) {
-            distances.set(neighbor, alt);
-            previous.set(neighbor, current);
+        const neighbors = graph.get(bestNode) || [];
+        neighbors.forEach(({ id: nId, weight }) => {
+          const alt = dist.get(bestNode) + weight;
+          if (alt < dist.get(nId)) {
+            dist.set(nId, alt);
+            prev.set(nId, bestNode);
           }
-        }
+        });
       }
 
       return null;
     }
 
-    // Step 4: Pick two random nodes
-    // const nodeIds = Array.from(nodeMap.keys());
-    // const startId = nodeIds[Math.floor(Math.random() * nodeIds.length)];
-    // let endId;
-    // do {
-    //   endId = nodeIds[Math.floor(Math.random() * nodeIds.length)];
-    // } while (endId === startId);
-
-    const startId = "CdMQXjVhVy8lNja3EkQl";
-    const endId = "Dnl7iPZo2KnflocJx0ZR";
-
     const path = dijkstra(graph, startId, endId);
-    console.log(`Shortest path from ${startId} to ${endId}:`, path);
+    console.log("Final path:", path);
 
-    // Step 5: Draw the path
+    //----------------------------------------------------
+    // STEP 4 — Draw path normally
+    //----------------------------------------------------
     if (path) {
-      const pathLines = {
-        type: "FeatureCollection",
-        features: [],
-      };
+      const features = [];
 
       for (let i = 0; i < path.length - 1; i++) {
-        const start = nodeMap.get(path[i]);
-        const end = nodeMap.get(path[i + 1]);
-        pathLines.features.push({
+        const p1 = nodeMap.get(path[i]);
+        const p2 = nodeMap.get(path[i + 1]);
+        features.push({
           type: "Feature",
-          geometry: { type: "LineString", coordinates: [start, end] },
+          geometry: { type: "LineString", coordinates: [p1, p2] },
         });
       }
 
+      const pathData = { type: "FeatureCollection", features };
+
       if (map.getSource("highlight-path")) {
-        map.getSource("highlight-path").setData(pathLines);
+        map.getSource("highlight-path").setData(pathData);
       } else {
-        map.addSource("highlight-path", { type: "geojson", data: pathLines });
+        map.addSource("highlight-path", { type: "geojson", data: pathData });
         map.addLayer({
           id: "highlight-path-line",
           type: "line",
@@ -683,6 +741,196 @@ if (SHOW_ALL_LINKS) {
 }
 
 
+//   // --- Pull nodes from backend API and render markers ---
+// async function loadNodes() {
+//   try {
+//     const res = await fetch("/api/nodes/data");
+//     if (!res.ok) throw new Error("Failed to load nodes");
+
+//     const nodes = await res.json();
+//     const nodeMap = new Map(); // id -> [lng, lat]
+
+//     // Step 1: Add markers and record positions
+//     nodes.forEach((node) => {
+//       if (node.long && node.lat) {
+//         const coords = [parseFloat(node.long), parseFloat(node.lat)];
+//         nodeMap.set(node.id, coords);
+
+//         const el = document.createElement("div");
+//         el.className = "marker";
+//         el.textContent = node.id.substring(0, 3);
+
+//         new mapboxgl.Marker(el).setLngLat(coords).addTo(map);
+//       }
+//     });
+
+//     // Step 2: Build weighted graph
+//     function haversineDistance(coord1, coord2) {
+//       const R = 6371e3;
+//       const toRad = (deg) => (deg * Math.PI) / 180;
+//       const [lng1, lat1] = coord1;
+//       const [lng2, lat2] = coord2;
+//       const φ1 = toRad(lat1);
+//       const φ2 = toRad(lat2);
+//       const Δφ = toRad(lat2 - lat1);
+//       const Δλ = toRad(lng2 - lng1);
+//       const a =
+//         Math.sin(Δφ / 2) ** 2 +
+//         Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+//       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+//       return R * c;
+//     }
+
+//     const graph = new Map();
+
+//     nodes.forEach((node) => {
+//       if (node.connections) {
+//         const connections = node.connections.split(",").map((id) => id.trim());
+//         graph.set(node.id, []);
+//         const start = nodeMap.get(node.id);
+//         connections.forEach((connId) => {
+//           const end = nodeMap.get(connId);
+//           if (start && end) {
+//             const distance = haversineDistance(start, end);
+//             graph.get(node.id).push({ id: connId, weight: distance });
+//           }
+//         });
+//       }
+//     });
+
+//     // --- OPTIONAL: draw all node links ---
+// if (SHOW_ALL_LINKS) {
+//   const allLines = {
+//     type: "FeatureCollection",
+//     features: []
+//   };
+
+//   graph.forEach((edges, id) => {
+//     const start = nodeMap.get(id);
+//     edges.forEach(edge => {
+//       const end = nodeMap.get(edge.id);
+//       if (start && end) {
+//         allLines.features.push({
+//           type: "Feature",
+//           geometry: { type: "LineString", coordinates: [start, end] }
+//         });
+//       }
+//     });
+//   });
+
+//   map.addSource("all-links", { type: "geojson", data: allLines });
+//   map.addLayer({
+//     id: "all-links-line",
+//     type: "line",
+//     source: "all-links",
+//     paint: {
+//       "line-color": "red",
+//       "line-width": 5,
+//       "line-opacity": 0.8
+//     }
+//   });
+
+//   // If we're showing all links, do NOT draw shortest path.
+//   return;
+// }
+
+
+//     // Step 3: Dijkstra
+//     function dijkstra(graph, startId, endId) {
+//       const distances = new Map();
+//       const previous = new Map();
+//       const pq = new Set(graph.keys());
+
+//       graph.forEach((_, nodeId) => distances.set(nodeId, Infinity));
+//       distances.set(startId, 0);
+
+//       while (pq.size > 0) {
+//         let current = null;
+//         let smallest = Infinity;
+//         for (const nodeId of pq) {
+//           const dist = distances.get(nodeId);
+//           if (dist < smallest) {
+//             smallest = dist;
+//             current = nodeId;
+//           }
+//         }
+
+//         if (current === null) break;
+//         pq.delete(current);
+
+//         if (current === endId) {
+//           const path = [];
+//           let temp = endId;
+//           while (temp) {
+//             path.unshift(temp);
+//             temp = previous.get(temp);
+//           }
+//           return path;
+//         }
+
+//         const neighbors = graph.get(current) || [];
+//         for (const { id: neighbor, weight } of neighbors) {
+//           const alt = distances.get(current) + weight;
+//           if (alt < distances.get(neighbor)) {
+//             distances.set(neighbor, alt);
+//             previous.set(neighbor, current);
+//           }
+//         }
+//       }
+
+//       return null;
+//     }
+
+//     // Step 4: Pick two random nodes
+//     // const nodeIds = Array.from(nodeMap.keys());
+//     // const startId = nodeIds[Math.floor(Math.random() * nodeIds.length)];
+//     // let endId;
+//     // do {
+//     //   endId = nodeIds[Math.floor(Math.random() * nodeIds.length)];
+//     // } while (endId === startId);
+
+//     const startId = "CdMQXjVhVy8lNja3EkQl";
+//     const endId = "Dnl7iPZo2KnflocJx0ZR";
+
+//     const path = dijkstra(graph, startId, endId);
+//     console.log(`Shortest path from ${startId} to ${endId}:`, path);
+
+//     // Step 5: Draw the path
+//     if (path) {
+//       const pathLines = {
+//         type: "FeatureCollection",
+//         features: [],
+//       };
+
+//       for (let i = 0; i < path.length - 1; i++) {
+//         const start = nodeMap.get(path[i]);
+//         const end = nodeMap.get(path[i + 1]);
+//         pathLines.features.push({
+//           type: "Feature",
+//           geometry: { type: "LineString", coordinates: [start, end] },
+//         });
+//       }
+
+//       if (map.getSource("highlight-path")) {
+//         map.getSource("highlight-path").setData(pathLines);
+//       } else {
+//         map.addSource("highlight-path", { type: "geojson", data: pathLines });
+//         map.addLayer({
+//           id: "highlight-path-line",
+//           type: "line",
+//           source: "highlight-path",
+//           paint: {
+//             "line-color": "#00AEEF",
+//             "line-width": 5,
+//             "line-opacity": 0.9,
+//           },
+//         });
+//       }
+//     }
+//   } catch (err) {
+//     console.error("Error loading nodes:", err);
+//   }
+// }
 
 
 
@@ -750,7 +998,7 @@ if (SHOW_ALL_LINKS) {
       });
     }
 
-    loadNodes();
+    // loadNodes();
 
 
     // Expose map + utils + navigation API
