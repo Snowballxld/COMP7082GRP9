@@ -1,3 +1,6 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+
 // public/js/bcit-map-core.js
 window.addEventListener("DOMContentLoaded", () => {
   if (!window.mapboxgl) {
@@ -486,7 +489,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 // ---------------------- Node Paths Rendering and Pathing -------------------
-mappings = {
+var mappings = {
     "buildings": [
         {
             "SE2": [
@@ -529,7 +532,7 @@ mappings = {
 
 
 // Toggle: true = show ALL connections, false = only show computed path
-const SHOW_ALL_LINKS = false;
+const SHOW_ALL_LINKS = true;
 
 window.highlightPathTo = async function ({building}) {
   console.log("test from highlight path")
@@ -761,6 +764,83 @@ async function loadNodes(startCoord = null, endNodeList = []) {
 }
 
 
+const app = initializeApp(window.firebaseConfig);
+const auth = getAuth(app);
+
+// Helper: Get current user's ID token for server requests
+async function getIdToken() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not authenticated. Please log in.");
+  return await user.getIdToken(/* forceRefresh */ true);
+}
+
+async function loadFavoriteMarkers() {
+  const token = await getIdToken();
+
+  // Load favorites
+  const favRes = await fetch("/api/favorites", {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const { favorites } = await favRes.json();
+
+  // Load all nodes
+  const nodeRes = await fetch("/api/nodes/data");
+  const nodes = await nodeRes.json();
+
+  // Match favorites to nodes
+  const favNodes = favorites
+    .map(fav => {
+      const node = nodes.find(n => n.id === fav.nodeId);
+      if (!node) return null;
+
+      // Determine display label
+      let label = fav.label;
+      if (!label && fav.addedAt?._seconds) {
+        label = new Date(fav.addedAt._seconds * 1000)
+          .toLocaleDateString();
+      }
+
+      return {
+        node,
+        label
+      };
+    })
+    .filter(Boolean);
+
+  // Clear old markers
+  if (window.favoriteMarkers) {
+    window.favoriteMarkers.forEach(m => m.remove());
+  }
+  window.favoriteMarkers = [];
+
+  // Add favorite markers
+  favNodes.forEach(({ node, label }) => {
+    const marker = new mapboxgl.Marker({ color: "#FFD700" }) // gold
+      .setLngLat([
+        parseFloat(node.long),
+        parseFloat(node.lat)
+      ])
+      .setPopup(
+        new mapboxgl.Popup().setHTML(`
+          ⭐ <strong>${label}</strong><br>
+        `)
+      )
+      .addTo(map);
+
+    window.favoriteMarkers.push(marker);
+
+    // Attach event handler after popup loads
+    marker.getElement().addEventListener("click", () => {
+      setTimeout(() => {
+        const btn = document.getElementById(`rm-${node.id}`);
+        if (btn) btn.onclick = () => removeFavorite(node.id);
+      }, 80);
+    });
+  });
+}
+
+
+
 async function debugLoadNodes() {
   try {
     const res = await fetch("/api/nodes/data");
@@ -903,7 +983,8 @@ async function debugLoadNodes() {
     }
 
     if (SHOW_ALL_LINKS) {
-      debugLoadNodes();
+      loadFavoriteMarkers();
+      //debugLoadNodes();
     }
 
 

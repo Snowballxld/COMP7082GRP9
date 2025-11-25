@@ -8,6 +8,19 @@
   <meta name="mapbox-token" content="<%- MAPBOX_TOKEN %>">
   <link href="/vendor/mapbox-gl/mapbox-gl.css" rel="stylesheet" />
   <link rel="stylesheet" href="/css/bcit-map.css" />
+
+  <!-- Firebase config for front-end -->
+  <script>
+    window.firebaseConfig = {
+      apiKey: "<%= process.env.FIREBASE_API_KEY %>",
+      authDomain: "<%= process.env.FIREBASE_AUTH_DOMAIN %>",
+      projectId: "<%= process.env.FIREBASE_PROJECT_ID %>",
+      storageBucket: "<%= process.env.FIREBASE_STORAGE_BUCKET %>",
+      messagingSenderId: "<%= process.env.FIREBASE_MESSAGING_SENDER_ID %>",
+      appId: "<%= process.env.FIREBASE_APP_ID %>"
+    };
+  </script>
+
 </head>
 
 <body>
@@ -28,9 +41,10 @@
   <script defer>window.MAPBOX_TOKEN = "<%- MAPBOX_TOKEN %>";</script>
 
   <!-- core map setup + plugins -->
-  <script defer src="/js/bcit-map-core.js"></script>
-  <script defer src="/js/bcit-map-floors.js"></script>
-  <script defer src="/js/bcit-map-search.js"></script>
+  <script type="module" src="/js/bcit-map-core.js"></script>
+  <script type="module" src="/js/bcit-map-floors.js"></script>
+  <script type="module" src="/js/bcit-map-search.js"></script>
+  
 </body>
 
 </html>
