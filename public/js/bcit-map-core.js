@@ -539,11 +539,11 @@ window.highlightPathTo = async function ({building}) {
   console.log(building)
 
   // 1 get nodes for building
-  possible_nodes = values = mappings["buildings"][0][building]
+  let possible_nodes = mappings["buildings"][0][building]
   console.log(possible_nodes)
 
   // 2 get current position OR default position if not available
-  current_location = [-122.99999, 49.25097]
+  let current_location = [-122.99999, 49.25097]
 
   // 3 from building nodes find the closest node to current position
   loadNodes(current_location, possible_nodes)
