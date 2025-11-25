@@ -22,17 +22,17 @@
   {
     "x": 626.0,
     "y": 455.0,
-    "label": "entrance west"
+    "label": "entranceWest"
   },
   {
     "x": 958.0,
     "y": 392.0,
-    "label": "entrance north"
+    "label": "entranceNorth"
   },
   {
     "x": 626.0,
     "y": 341.0,
-    "label": "entrance east"
+    "label": "entranceEast"
   },
   {
     "x": 388.0,
