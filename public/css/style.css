@@ -29,13 +29,13 @@ header {
   flex-direction: column;
   align-items: center;
   background: #007acc;
-  padding: 1rem;
+  padding: 0.5rem;
 }
 
 .site-title {
   color: #fff;
   font-size: 2rem;
-  margin-bottom: 0.5rem;
+  margin: 0.5rem;
 }
 
 nav {
@@ -49,7 +49,7 @@ nav {
   justify-content: center;
   gap: 1rem;
   list-style: none;
-  margin: 0;
+  margin: 1rem;
   padding: 0;
 }
 
@@ -159,7 +159,7 @@ nav {
 
 .about-content h3 {
   font-size: 1.8rem;
-  margin-top: 2rem;
+  margin-top: 1rem;
   margin-bottom: 1rem;
 }
 
@@ -175,7 +175,7 @@ nav {
   color: #fff;
   padding: 1rem;
   border-radius: 8px;
-  width: 150px;
+  width: 200px;
   text-align: center;
 }
 
@@ -205,13 +205,13 @@ nav {
 }
 
 .node-form, .node-list {
-  margin-top: 2rem;
+  margin-top: 1rem;
 }
 
 .node-form input {
   display: block;
   width: 80%;
-  margin: 0.5rem auto;
+  margin: 0.5rem;
   padding: 0.5rem;
   border-radius: 5px;
   border: 1px solid #ccc;
@@ -243,7 +243,7 @@ nav {
   align-items: center;
   justify-content: center;
   background: linear-gradient(to right, #f0f8ff, #ffffff);
-  padding: 0;
+  padding: 10px;
 }
 
 .map-container {
@@ -252,6 +252,7 @@ nav {
   height: 600px;
   border: 3px solid #007acc;
   border-radius: 8px;
+  margin: 5px;
 }
 
 /* =======================
@@ -282,10 +283,99 @@ nav {
 }
 
 /* =======================
+   FAVORITES PAGE
+======================= */
+.favorites {
+  min-height: 80vh;
+  display: flex;
+  justify-content: center;
+  background: linear-gradient(to right, #f0f8ff, #ffffff);
+  padding: 2rem;
+}
+
+.favorites-content {
+  max-width: 700px;
+  width: 100%;
+  text-align: center;
+}
+
+.favorites-content h2 {
+  font-size: 2.2rem;
+  color: #007acc;
+  margin-bottom: 0.5rem;
+}
+
+.favorites-content p {
+  font-size: 1.1rem;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.favorites-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.favorite-item {
+  background: #007acc;
+  color: #fff;
+  padding: 1rem 1.5rem;
+  margin: 0.75rem auto;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.25s ease, transform 0.15s ease;
+}
+
+.favorite-item:hover {
+  background: #005f99;
+  transform: translateY(-2px);
+}
+
+.favorite-label {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+.favorite-date {
+  opacity: 0.85;
+  font-size: 0.9rem;
+}
+
+.favorite-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.favorite-btn {
+  background: #ffffff33;
+  border: none;
+  padding: 0.4rem 0.75rem;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.favorite-btn:hover {
+  background: #ffffff55;
+}
+
+
+/* =======================
    RESPONSIVE STYLES
 ======================= */
 @media (max-width: 600px) {
   /* Navigation Menu */
+  nav { 
+    min-height: 35px;
+  }
+
   .nav-menu {
     flex-direction: column;
     display: none;

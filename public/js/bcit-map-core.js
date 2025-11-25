@@ -1,3 +1,6 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+
 // public/js/bcit-map-core.js
 window.addEventListener("DOMContentLoaded", () => {
   if (!window.mapboxgl) {
@@ -486,7 +489,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 
 // ---------------------- Node Paths Rendering and Pathing -------------------
-mappings = {
+var mappings = {
     "buildings": [
         {
             "SE2": [
@@ -498,7 +501,9 @@ mappings = {
               "0FdawMKkva5iTlBdQzNV"
             ],
             "SE8": [],
-            "SE9": [],
+            "SE9": [
+              "kG5PUBG7CkQj9rXuzOMU"
+            ],
             "SE12": [
                 "gKvd6XdaIiHcfr85GkUF",
                 "m6biNg1zOP4LjEJggXNq",
@@ -534,11 +539,11 @@ window.highlightPathTo = async function ({building}) {
   console.log(building)
 
   // 1 get nodes for building
-  possible_nodes = values = mappings["buildings"][0][building]
+  let possible_nodes = mappings["buildings"][0][building]
   console.log(possible_nodes)
 
   // 2 get current position OR default position if not available
-  current_location = [-122.99999, 49.25097]
+  let current_location = [-122.99999, 49.25097]
 
   // 3 from building nodes find the closest node to current position
   loadNodes(current_location, possible_nodes)
@@ -570,7 +575,7 @@ async function loadNodes(startCoord = null, endNodeList = []) {
         el.className = "marker";
         el.textContent = node.id.substring(0, 3);
 
-        new mapboxgl.Marker(el).setLngLat(coords).addTo(map);
+        // new mapboxgl.Marker(el).setLngLat(coords).addTo(map);
       }
     });
 
@@ -759,6 +764,83 @@ async function loadNodes(startCoord = null, endNodeList = []) {
 }
 
 
+const app = initializeApp(window.firebaseConfig);
+const auth = getAuth(app);
+
+// Helper: Get current user's ID token for server requests
+async function getIdToken() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not authenticated. Please log in.");
+  return await user.getIdToken(/* forceRefresh */ true);
+}
+
+async function loadFavoriteMarkers() {
+  const token = await getIdToken();
+
+  // Load favorites
+  const favRes = await fetch("/api/favorites", {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const { favorites } = await favRes.json();
+
+  // Load all nodes
+  const nodeRes = await fetch("/api/nodes/data");
+  const nodes = await nodeRes.json();
+
+  // Match favorites to nodes
+  const favNodes = favorites
+    .map(fav => {
+      const node = nodes.find(n => n.id === fav.nodeId);
+      if (!node) return null;
+
+      // Determine display label
+      let label = fav.label;
+      if (!label && fav.addedAt?._seconds) {
+        label = new Date(fav.addedAt._seconds * 1000)
+          .toLocaleDateString();
+      }
+
+      return {
+        node,
+        label
+      };
+    })
+    .filter(Boolean);
+
+  // Clear old markers
+  if (window.favoriteMarkers) {
+    window.favoriteMarkers.forEach(m => m.remove());
+  }
+  window.favoriteMarkers = [];
+
+  // Add favorite markers
+  favNodes.forEach(({ node, label }) => {
+    const marker = new mapboxgl.Marker({ color: "#FFD700" }) // gold
+      .setLngLat([
+        parseFloat(node.long),
+        parseFloat(node.lat)
+      ])
+      .setPopup(
+        new mapboxgl.Popup().setHTML(`
+          ⭐ <strong>${label}</strong><br>
+        `)
+      )
+      .addTo(map);
+
+    window.favoriteMarkers.push(marker);
+
+    // Attach event handler after popup loads
+    marker.getElement().addEventListener("click", () => {
+      setTimeout(() => {
+        const btn = document.getElementById(`rm-${node.id}`);
+        if (btn) btn.onclick = () => removeFavorite(node.id);
+      }, 80);
+    });
+  });
+}
+
+
+
 async function debugLoadNodes() {
   try {
     const res = await fetch("/api/nodes/data");
@@ -901,7 +983,8 @@ async function debugLoadNodes() {
     }
 
     if (SHOW_ALL_LINKS) {
-      debugLoadNodes();
+      loadFavoriteMarkers();
+      //debugLoadNodes();
     }
 
 
