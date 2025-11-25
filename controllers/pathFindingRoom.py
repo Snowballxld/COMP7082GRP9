@@ -382,8 +382,10 @@ def visualize_path(path, start, goal):
     PATH_VALUE = 2   
     START_MARKER_VALUE = 3   # Blue Circle
     GOAL_MARKER_VALUE = 4   # Green Triangle/Arrow
+    PATH_LINE_WIDTH = 3
 
-    marker_size = 5 
+    path_thickness_offset = (PATH_LINE_WIDTH - 1) // 2
+    marker_size = 10
     
     segment_markers, path_segments_by_map = get_segment_markers(path)
     required_viz = segment_markers.keys()
@@ -408,9 +410,14 @@ def visualize_path(path, start, goal):
         
         # --- Draw Path ---
         for r, c in path_by_map[(b_code, floor)]:
-            # Only draw path on free space (value 0)
-            if 0 <= r < rows and 0 <= c < cols and vis[r, c] == 0:
-                vis[r, c] = PATH_VALUE
+            # Iterate over a square area based on the new thickness offset
+            for dr in range(-path_thickness_offset, path_thickness_offset + 1):
+                for dc in range(-path_thickness_offset, path_thickness_offset + 1):
+                    nr, nc = r + dr, c + dc
+                    
+                    # Check bounds and only draw path on free space (value 0)
+                    if 0 <= nr < rows and 0 <= nc < cols and vis[nr, nc] == 0:
+                        vis[nr, nc] = PATH_VALUE
 
         # --- Draw Markers (Overwrite everything) ---
         local_start, local_end = segment_markers.get((b_code, floor), (None, None))
@@ -442,6 +449,12 @@ def visualize_path(path, start, goal):
         # 2: Path (Red), 3: Start/Local Start (Blue), 4: Goal/Local Goal (Green)
         cmap_colors = ['#00000000', '#00000000', 'red', 'blue', 'green'] # Use transparent hex for 0 and 1
         cmap = mcolors.ListedColormap(cmap_colors)
+
+        # Grid/Free space (0 and 1) are VISIBLE for the background file
+        # Assuming 0: Free Space (White), 1: Wall/Obstacle (Dark Gray)
+        GRID_COLORS = ['#ffffff', '#595959', 'red', 'blue', 'green']
+        cmap_with_grid = mcolors.ListedColormap(GRID_COLORS)
+        cmap_with_grid.set_under(GRID_COLORS[0])
         
         # Use a Normalized colormap and set the out-of-range color to transparent black
         cmap.set_under('#00000000') # Ensure values below min (0) are transparent
@@ -453,7 +466,15 @@ def visualize_path(path, start, goal):
         out_path_full = os.path.join(OUT_DIR, f"{b_code}_floor{floor}_path.png")
         
         # *** KEY CHANGE: Set transparent=True when saving ***
-        plt.savefig(out_path_full, bbox_inches='tight', pad_inches=0, transparent=True) 
+        plt.savefig(out_path_full, bbox_inches='tight', pad_inches=0, transparent=True)
+
+        # 2. Save WITH background (full grid/floor plan)
+        # Use the grid colormap (re-plot on the same figure to change the colors)
+        plt.imshow(vis, cmap=cmap_with_grid, interpolation='nearest', vmin=0, vmax=len(GRID_COLORS) - 1)
+        
+        out_path_full_bg = os.path.join(OUT_DIR, f"{b_code}_floor{floor}_path_bg.png")
+        plt.savefig(out_path_full_bg, bbox_inches='tight', pad_inches=0, transparent=False)
+
         plt.close()
 
 

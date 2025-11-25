@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const handlePathRequest = (req, res) => {
+    console.log("REQ BODY:", req.body);
     const { startBuildingCode, startRoom, goalBuildingCode, goalRoom } = req.body;
 
     const startDirection = startBuildingCode.slice(0, 2).toLowerCase();
@@ -23,19 +24,22 @@ export const handlePathRequest = (req, res) => {
         goalRoom
     ];
 
+    console.log("Running python script…");
 
     execFile("python3", [scriptPath, ...scriptArgs], { cwd: path.join(__dirname, "../") }, (err, stdout, stderr) => {
         if (err) {
             console.error(stderr);
-            const errorOutput = `Error running pathfinder: ${stderr}\nExecuted: python3 ${scriptPath} ${scriptArgs.join(' ')}`;
-            return res.render("result", { output: errorOutput, showImages: false, title: 'Building Map Navigator – Error' });
+            return res.status(500).json({
+                success: false,
+                error: stderr
+            });
         }
 
-        res.render("result", {
-            output: stdout,
-            showImages: true,
-            page: 'result',
-            title: 'Building Map Navigator – Path Result'
+        console.log("Worked2");
+
+        res.json({
+            success: true,
+            output: stdout
         });
     });
 };

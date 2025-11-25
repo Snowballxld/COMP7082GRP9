@@ -8,7 +8,7 @@ import pyautogui
 import os
 
 # === GLOBAL CONFIGURATION AND PATHS ===
-BUILDING_CODE = "sw05F2"
+BUILDING_CODE = "sw05F1"
 
 folder_path = f"floorPlans/{BUILDING_CODE[:2]}/{BUILDING_CODE[2:4]}/{BUILDING_CODE[4:]}"
 os.makedirs(folder_path, exist_ok=True) # Ensure directory exists
