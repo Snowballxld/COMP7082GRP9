@@ -76,7 +76,6 @@ async function loadNodes() {
       details.innerHTML = `
         <div><strong>Lat:</strong> ${node.lat}</div>
         <div><strong>Long:</strong> ${node.long}</div>
-        <div><strong>uid</strong> ${node.id}</div>
         <div><strong>Connections:</strong> ${node.connections}</div>
         `;
 

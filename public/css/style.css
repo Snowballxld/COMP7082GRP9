@@ -49,7 +49,7 @@ nav {
   justify-content: center;
   gap: 1rem;
   list-style: none;
-  margin: 0;
+  margin: 1rem;
   padding: 0;
 }
 
@@ -372,6 +372,10 @@ nav {
 ======================= */
 @media (max-width: 600px) {
   /* Navigation Menu */
+  nav { 
+    min-height: 35px;
+  }
+
   .nav-menu {
     flex-direction: column;
     display: none;
