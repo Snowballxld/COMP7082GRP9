@@ -498,7 +498,9 @@ mappings = {
               "0FdawMKkva5iTlBdQzNV"
             ],
             "SE8": [],
-            "SE9": [],
+            "SE9": [
+              "kG5PUBG7CkQj9rXuzOMU"
+            ],
             "SE12": [
                 "gKvd6XdaIiHcfr85GkUF",
                 "m6biNg1zOP4LjEJggXNq",
@@ -527,7 +529,7 @@ mappings = {
 
 
 // Toggle: true = show ALL connections, false = only show computed path
-const SHOW_ALL_LINKS = true;
+const SHOW_ALL_LINKS = false;
 
 window.highlightPathTo = async function ({building}) {
   console.log("test from highlight path")
