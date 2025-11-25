@@ -13,7 +13,8 @@ from PIL import Image, ImageDraw # Import Pillow for image overlay
 
 # === CONFIG ===
 BASE_DIR = "floorPlans"
-OUT_DIR = "public"
+OUT_DIR = "public/images"
+OUT_DIR_DATA = "public/data"
 
 # Global data structures (keyed by building_code for ALL_BUILDING_DATA)
 ALL_BUILDING_DATA = {} # Stores grids, connections, meta, etc. {b_code: {floor_num: {data...}}}
@@ -319,7 +320,7 @@ def get_points_on_line(p1, p2):
 def save_path_array(smoothed_path):
     """Saves the final path array to a JSON file."""
     os.makedirs(OUT_DIR, exist_ok=True)
-    out_path = os.path.join(OUT_DIR, "final_path.json")
+    out_path = os.path.join(OUT_DIR_DATA, "final_path.json")
     
     path_list = [list(step) for step in smoothed_path]
     
@@ -449,7 +450,7 @@ def visualize_path(path, start, goal):
         
         plt.axis('off') 
         
-        out_path_full = os.path.join(OUT_DIR, f"{b_code}_floor{floor}_path_transparent.png")
+        out_path_full = os.path.join(OUT_DIR, f"{b_code}_floor{floor}_path.png")
         
         # *** KEY CHANGE: Set transparent=True when saving ***
         plt.savefig(out_path_full, bbox_inches='tight', pad_inches=0, transparent=True) 
