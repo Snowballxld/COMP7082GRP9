@@ -13,6 +13,11 @@ router.get('/map', checkSession, (req, res) => {
   res.render('map', { MAPBOX_TOKEN: process.env.MAPBOX_TOKEN, page: 'map', title: 'Wayfindr – Map', user: req.session.user });
 });
 
+// Map-inside page
+router.get('/map-inside', checkSession, (req, res) => {
+  res.render('map-inside', { page: 'map-inside', title: 'Wayfindr – Map-inside', user: req.session.user });
+});
+
 router.get("/bcit-map", checkSession, (req, res) => {
   // Pass token to EJS; public JS reads it from a meta tag
   res.render("bcit-map", { MAPBOX_TOKEN: process.env.MAPBOX_TOKEN });

@@ -21,6 +21,14 @@
         </li>
 
         <li>
+            <% if(page === 'map-inside'){ %>
+            <span class="active">Inside</span>
+            <% } else { %>
+            <a href="/map-inside" class="<%= page === 'map-inside' ? 'active' : '' %>">Inside</a>
+            <% } %>
+        </li>
+
+        <li>
             <% if(page === 'nodes'){ %>
             <span class="active">Nodes</span>
             <% } else { %>
