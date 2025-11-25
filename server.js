@@ -26,6 +26,8 @@ const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const db = admin.firestore();
+
 app.use(express.json());
 app.use(requestLogger);
 
@@ -55,7 +57,7 @@ app.set("view engine", "ejs");
 
 app.use("/calibrator", calibratorRouter);
 app.use('/auth', authRouter);
-app.use("/api/nodes", nodeRoutes);
+app.use("/api/nodes", nodeRoutes(db));
 app.use("/api/favorites", favoritesRouter);
 app.use('/', route);
 
