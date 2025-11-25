@@ -572,7 +572,7 @@ async function loadNodes(startCoord = null, endNodeList = []) {
         el.className = "marker";
         el.textContent = node.id.substring(0, 3);
 
-        new mapboxgl.Marker(el).setLngLat(coords).addTo(map);
+        // new mapboxgl.Marker(el).setLngLat(coords).addTo(map);
       }
     });
 
