@@ -68,12 +68,13 @@ async function loadNodes() {
       // Node title (alt / ID)
       const title = document.createElement("span");
       title.classList.add("node-title");
-      title.textContent = node.alt;
+      title.textContent = node.id;
 
       // Node details container
       const details = document.createElement("div");
       details.classList.add("node-details");
       details.innerHTML = `
+        <div><strong>Alt:</strong> ${node.alt}</div>
         <div><strong>Lat:</strong> ${node.lat}</div>
         <div><strong>Long:</strong> ${node.long}</div>
         <div><strong>Connections:</strong> ${node.connections}</div>
