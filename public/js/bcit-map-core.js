@@ -529,7 +529,7 @@ mappings = {
 
 
 // Toggle: true = show ALL connections, false = only show computed path
-const SHOW_ALL_LINKS = true;
+const SHOW_ALL_LINKS = false;
 
 window.highlightPathTo = async function ({building}) {
   console.log("test from highlight path")
