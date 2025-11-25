@@ -63,14 +63,42 @@ async function loadNodes() {
 
     nodes.forEach(node => {
       const li = document.createElement("li");
-      li.innerHTML = `
-        <strong>${node.alt}</strong>
-        <br>Lat: ${node.lat}, Long: ${node.long}
-        <br>Connections: ${node.connections}
-        <button class="btn-small" data-nodeid="${node.uid}">⭐ Add to Favorites</button>
-      `;
+      li.classList.add("node-item");
+
+      // Node title (alt / ID)
+      const title = document.createElement("span");
+      title.classList.add("node-title");
+      title.textContent = node.alt;
+
+      // Node details container
+      const details = document.createElement("div");
+      details.classList.add("node-details");
+      details.innerHTML = `
+        <div><strong>Lat:</strong> ${node.lat}</div>
+        <div><strong>Long:</strong> ${node.long}</div>
+        <div><strong>uid</strong> ${node.id}</div>
+        <div><strong>Connections:</strong> ${node.connections}</div>
+        `;
+
+      // Actions container
+      const actions = document.createElement("div");
+      actions.classList.add("node-actions");
+
+      const favBtn = document.createElement("button");
+      favBtn.classList.add("node-btn", "fav-btn");
+      favBtn.dataset.nodeid = node.id;
+      favBtn.textContent = "⭐ Add to Favorites";
+
+      actions.appendChild(favBtn);
+
+      // Build final item
+      li.appendChild(title);
+      li.appendChild(details);
+      li.appendChild(actions);
+
       list.appendChild(li);
     });
+
 
     attachFavoriteHandlers();
   } catch (err) {

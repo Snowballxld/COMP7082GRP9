@@ -45,20 +45,52 @@ function renderFavorites(favorites) {
 
   favorites.forEach(fav => {
     const li = document.createElement("li");
+    li.classList.add("favorite-item");
 
-    // Show label or formatted addedAt date
+    // Label fallback logic
     let displayLabel = fav.label;
     if (!displayLabel && fav.addedAt?._seconds) {
-      displayLabel = new Date(fav.addedAt._seconds * 1000).toLocaleDateString();
+      displayLabel = new Date(fav.addedAt._seconds * 1000)
+        .toLocaleDateString();
     }
 
-    li.innerHTML = `
-      <strong>${displayLabel}</strong>
-      <br>
-      <button class="btn-small rename-btn" data-nodeid="${fav.nodeId}">✏️ Rename</button>
-      <button class="btn-small remove-btn" data-nodeid="${fav.nodeId}">❌ Remove</button>
-      <button class="btn-small use-btn" data-nodeid="${fav.nodeId}">✔ Move to Top</button>
-    `;
+    // Main label element
+    const labelSpan = document.createElement("span");
+    labelSpan.classList.add("favorite-label");
+    labelSpan.textContent = displayLabel;
+
+    // Optional: show addedAt date (if needed)
+    // const dateSpan = document.createElement("span");
+    // dateSpan.classList.add("favorite-date");
+    // dateSpan.textContent = new Date(fav.addedAt._seconds * 1000).toLocaleString();
+
+    // Actions container
+    const actionsDiv = document.createElement("div");
+    actionsDiv.classList.add("favorite-actions");
+
+    const renameBtn = document.createElement("button");
+    renameBtn.classList.add("favorite-btn", "rename-btn");
+    renameBtn.dataset.nodeid = fav.nodeId;
+    renameBtn.textContent = "✏️";
+
+    const removeBtn = document.createElement("button");
+    removeBtn.classList.add("favorite-btn", "remove-btn");
+    removeBtn.dataset.nodeid = fav.nodeId;
+    removeBtn.textContent = "❌";
+
+    const useBtn = document.createElement("button");
+    useBtn.classList.add("favorite-btn", "use-btn");
+    useBtn.dataset.nodeid = fav.nodeId;
+    useBtn.textContent = "⬆";
+
+    // Add buttons to actions container
+    actionsDiv.appendChild(renameBtn);
+    actionsDiv.appendChild(removeBtn);
+    actionsDiv.appendChild(useBtn);
+
+    // Put everything into the list item
+    li.appendChild(labelSpan);
+    li.appendChild(actionsDiv);
 
     favoritesList.appendChild(li);
   });
