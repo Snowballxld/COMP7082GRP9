@@ -9,11 +9,11 @@ router.get('/', (req, res) => {
 });
 
 // Map page
-router.get('/map', (req, res) => {
+router.get('/map', checkSession, (req, res) => {
   res.render('map', { MAPBOX_TOKEN: process.env.MAPBOX_TOKEN, page: 'map', title: 'Wayfindr – Map', user: req.session.user });
 });
 
-router.get("/bcit-map", (req, res) => {
+router.get("/bcit-map", checkSession, (req, res) => {
   // Pass token to EJS; public JS reads it from a meta tag
   res.render("bcit-map", { MAPBOX_TOKEN: process.env.MAPBOX_TOKEN });
 });

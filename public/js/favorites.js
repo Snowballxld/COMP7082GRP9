@@ -58,11 +58,13 @@ function renderFavorites(favorites) {
     const labelSpan = document.createElement("span");
     labelSpan.classList.add("favorite-label");
     labelSpan.textContent = displayLabel;
+    labelSpan.style.cursor = "pointer"
 
-    // Optional: show addedAt date (if needed)
-    // const dateSpan = document.createElement("span");
-    // dateSpan.classList.add("favorite-date");
-    // dateSpan.textContent = new Date(fav.addedAt._seconds * 1000).toLocaleString();
+    // When clicked, go to map page and pass nodeId
+    labelSpan.addEventListener("click", () => {
+      // Example: navigate to /map?nodeId=<id>
+      window.location.href = `/map`;
+    });
 
     // Actions container
     const actionsDiv = document.createElement("div");
