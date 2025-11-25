@@ -1,33 +1,56 @@
-// public/js/nodes.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
 
-// ------------------------
-// Initialize Firebase
-// ------------------------
 const app = initializeApp(window.firebaseConfig);
 const auth = getAuth(app);
 
-// ------------------------
-// Optional login/logout elements (if present)
-// ------------------------
-const loginForm = document.getElementById('loginForm');
-const errorElem = document.getElementById('error');
-const logoutBtn = document.getElementById('logoutBtn');
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("nodeForm");
+  const list = document.getElementById("nodesList");
 
-if (logoutBtn) {
-  logoutBtn.addEventListener('click', async () => {
-    await fetch('/auth/sessionLogout', { method: 'POST' });
-    localStorage.removeItem('user');
-    logoutBtn.style.display = 'none';
-    if (loginForm) loginForm.style.display = 'block';
-    window.location.href = "/auth/login";
+  // Fetch existing nodes on page load
+  fetch("/api/nodes")
+    .then(res => res.json());
+
+  // Handle form submission
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const formData = {
+      long: form.long.value,
+      lat: form.lat.value,
+      alt: form.alt.value,
+      connections: form.connections.value
+    };
+
+    try {
+      const res = await fetch("/api/nodes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Error creating node");
+        return;
+      }
+
+      form.reset();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create node");
+    }
   });
-}
+});
 
-// ------------------------
-// Load all nodes
-// ------------------------
+
+
+
+
+
+
 async function loadNodes() {
   try {
     const res = await fetch("/api/nodes");

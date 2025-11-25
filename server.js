@@ -9,6 +9,7 @@ import route from "./routes/route.js";
 import nodeRoutes from "./routes/nodes.js";
 import authRouter from './routes/auth.js';
 import favoritesRouter from "./routes/favorites.js";
+import calibratorRouter from "./routes/calibrator.js";
 
 import { requestLogger } from "./middleware/logger.js";
 import { errorHandler } from './middleware/errorHandler.js';
@@ -24,6 +25,8 @@ const PORT = process.env.PORT || 5000;
 const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const db = admin.firestore();
 
 app.use(express.json());
 app.use(requestLogger);
@@ -53,8 +56,9 @@ app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 
+app.use("/calibrator", calibratorRouter);
 app.use('/auth', authRouter);
-app.use("/api/nodes", nodeRoutes);
+app.use("/api/nodes", nodeRoutes(db));
 app.use("/api/favorites", favoritesRouter);
 app.use('/', route);
 
