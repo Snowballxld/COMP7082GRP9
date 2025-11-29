@@ -71,7 +71,8 @@ app.use((req, res, next) => {
   next();
 });
 
-if (process.env.NODE_ENV !== "test") {
+// Only start the server if not running inside Jest
+if (process.env.JEST_WORKER_ID === undefined) {
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
