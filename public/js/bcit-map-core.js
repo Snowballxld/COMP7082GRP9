@@ -153,7 +153,7 @@ window.addEventListener("DOMContentLoaded", () => {
       const ok = sig === "%PDF-" || ct.includes("application/pdf");
       _existCache.set(url, ok);
       return ok;
-    } catch (e) {
+    } catch (_e) {
       _existCache.set(url, false);
       return false;
     }

@@ -50,7 +50,7 @@
         Object.keys(byBuilding).forEach((b) => {
           roomFloorsIndex[b] = Array.from(byBuilding[b]);
         });
-      } catch (_e) {
+      } catch {
         // fail silently; floorLabels on building props will still work
       }
     })();
