@@ -9,7 +9,7 @@ router.get('/test', (req, res) => {
   res.json({ message: 'Token verified!', user: { test: true } });
 });
 
-router.post('/sessionLogin', async (req, res) => {
+router.post('/sessionLogin', async (req, res, next) => {
   const idToken = req.body.idToken;
   const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 days
   try {

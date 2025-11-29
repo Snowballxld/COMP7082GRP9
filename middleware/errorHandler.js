@@ -1,6 +1,6 @@
 import { logger, logCritical } from "./logger.js";
 
-export async function errorHandler(err, req, res, next) {
+export async function errorHandler(err, req, res, _next) {
   const statusCode = err.statusCode || 500;
   const isAuthError =
     err.message?.toLowerCase().includes("firebase") ||

@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 import winston from "winston";
 import "winston-daily-rotate-file";
 import morgan from "morgan";

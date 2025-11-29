@@ -1,7 +1,10 @@
 import express from "express";
 import { checkSession } from "../middleware/authMiddleware.js";
+import admin from "../config/firebase.js";
 
 const router = express.Router();
+const db = admin.firestore();
+
 
 // Home page
 router.get('/', (req, res) => {

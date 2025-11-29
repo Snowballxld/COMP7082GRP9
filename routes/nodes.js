@@ -1,7 +1,7 @@
 // routes/nodes.js
 
 import express from "express";
-import admin from "firebase-admin";
+// import admin from "firebase-admin";
 
 export default function nodeRoutes(db) {
   const router = express.Router();

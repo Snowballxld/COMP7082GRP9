@@ -1,9 +1,10 @@
+// eslint.config.js
 import js from "@eslint/js";
 import globals from "globals";
 import { defineConfig } from "eslint/config";
 
 export default defineConfig([
-  // Global ignores (replacement for .eslintignore)
+  // Global ignores (replaces .eslintignore)
   {
     ignores: [
       "node_modules/**",
@@ -11,10 +12,13 @@ export default defineConfig([
       "build/**",
       "coverage/**",
       "public/vendor/**",
+      "public/js/config.js", // ignore this legacy/browser-unfriendly file
     ],
   },
 
-  // Backend: Node ESM
+  // ------------------------------
+  // Backend: Node (ES modules)
+  // ------------------------------
   {
     files: ["**/*.js"],
     ignores: ["public/**", "__tests__/**"],
@@ -26,15 +30,21 @@ export default defineConfig([
         ...globals.node,
       },
     },
+    rules: {
+      // allow unused args when prefixed with "_"
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+    },
   },
 
-  // Frontend: browser JS
+  // ------------------------------
+  // Frontend: browser ESM (public/js)
+  // ------------------------------
   {
     files: ["public/**/*.js"],
     extends: [js.configs.recommended],
     languageOptions: {
       ecmaVersion: "latest",
-      sourceType: "script",
+      sourceType: "module", // <- fixes "import/export only with sourceType: module"
       globals: {
         ...globals.browser,
         mapboxgl: "readonly",
@@ -42,9 +52,15 @@ export default defineConfig([
         LEVEL_FLOORPLAN_LINKS: "readonly",
       },
     },
+    rules: {
+      "no-undef": "warn",
+      "no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+    },
   },
 
-  // Tests: Jest in ESM files
+  // ------------------------------
+  // Tests: Jest (ESM)
+  // ------------------------------
   {
     files: ["__tests__/**/*.js"],
     extends: [js.configs.recommended],
@@ -55,6 +71,9 @@ export default defineConfig([
         ...globals.node,
         ...globals.jest, // describe, test, expect, etc.
       },
+    },
+    rules: {
+      "no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     },
   },
 ]);

@@ -1,7 +1,7 @@
 // routes/favorites.js
 
 import express from "express";
-import admin from "../config/firebase.js";
+// import admin from "../config/firebase.js";
 import User from "../models/user.js";
 import { verifyFirebaseToken } from "../middleware/authMiddleware.js";
 
@@ -48,7 +48,7 @@ router.post("/", verifyFirebaseToken, ensureUserDoc, async (req, res, next) => {
     const { nodeId, label, isKeyLocation = false, nodeMeta = {} } = req.body;
     if (!nodeId) return res.status(400).json({ error: "nodeId is required" });
 
-    const result = await req.userModel.addFavorite(nodeId, { label, isKeyLocation, nodeMeta });
+    await req.userModel.addFavorite(nodeId, { label, isKeyLocation, nodeMeta });
   
     const fav = await req.userModel.getFavorite(nodeId);
 
