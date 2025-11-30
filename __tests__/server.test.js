@@ -1,12 +1,9 @@
-/**
- * server.test.js — ESM-compatible Jest test file
- *
- * Uses: jest.unstable_mockModule() instead of jest.mock()
- */
-
+import { jest } from "@jest/globals";     // <-- REQUIRED for ESM tests
 import request from "supertest";
 
-// --- ESM mocks --- //
+// ------------------------
+// Mock Needed Modules
+// ------------------------
 await jest.unstable_mockModule("../config/firebase.js", () => ({
   default: {
     firestore: () => ({
@@ -32,9 +29,12 @@ await jest.unstable_mockModule("../middleware/errorHandler.js", () => ({
   },
 }));
 
-// After mocks → import the server (VERY IMPORTANT)
+// Import the server AFTER mocks
 const { default: app } = await import("../server.js");
 
+// ------------------------
+// Test Suites
+// ------------------------
 describe("SERVER.JS – Core Express Setup", () => {
   test("App loads successfully", () => {
     expect(app).toBeDefined();
@@ -46,7 +46,7 @@ describe("SERVER.JS – Core Express Setup", () => {
     expect(res.body).toEqual({ status: "ok" });
   });
 
-  test("EJS engine renders index page", async () => {
+  test("EJS index page renders", async () => {
     const res = await request(app).get("/");
     expect(res.status).toBe(200);
     expect(res.text).toContain("<!DOCTYPE");
@@ -54,17 +54,17 @@ describe("SERVER.JS – Core Express Setup", () => {
 });
 
 describe("Session Middleware", () => {
-  test("Session cookie should be created", async () => {
+  test("Session cookie is created", async () => {
     const res = await request(app).get("/");
     const cookies = res.headers["set-cookie"] || [];
-    const sid = cookies.find(c => c.includes("connect.sid"));
+    const sid = cookies.find((c) => c.includes("connect.sid"));
     expect(sid).toBeDefined();
   });
 });
 
-describe("Unknown Route Redirect", () => {
-  test("GET /random/path redirects to /", async () => {
-    const res = await request(app).get("/random/not-found-path");
+describe("Unknown Route", () => {
+  test("GET /non-existent redirects to /", async () => {
+    const res = await request(app).get("/does/not/exist");
     expect(res.status).toBe(302);
     expect(res.headers.location).toBe("/");
   });
