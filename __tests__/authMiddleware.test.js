@@ -1,82 +1,104 @@
 // __tests__/authMiddleware.test.js
 import { jest } from '@jest/globals';
-import { expect, describe, test, beforeEach } from '@jest/globals';
+import { verifyFirebaseToken, checkSession } from '../middleware/authMiddleware.js';
 
-// --- ESM async mock ---
-const firebaseMock = {
+// --- Mock Firebase admin ---
+const mockVerifyIdToken = jest.fn();
+jest.unstable_mockModule('../config/firebase.js', () => ({
   default: {
     auth: () => ({
-      verifyIdToken: jest.fn((token) => {
-        if (token === "valid-token") return Promise.resolve({ uid: "123" });
-        return Promise.reject(new Error("Invalid token"));
-      }),
+      verifyIdToken: mockVerifyIdToken,
     }),
   },
-};
+}));
 
-// Unstable mock module
-await jest.unstable_mockModule('../config/firebase.js', () => firebaseMock);
-
-// Import middleware after mock
-const { verifyFirebaseToken, checkSession } = await import('../middleware/authMiddleware.js');
+const admin = (await import('../config/firebase.js')).default;
 
 describe("Auth Middleware", () => {
   let req, res, next;
 
   beforeEach(() => {
-    req = { headers: {}, session: {}, xhr: false };
-    res = { status: jest.fn().mockReturnThis(), json: jest.fn(), redirect: jest.fn() };
+    req = { headers: { accept: "application/json" }, session: {}, xhr: false };
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+      redirect: jest.fn()
+    };
     next = jest.fn();
+    mockVerifyIdToken.mockReset();
   });
 
-  describe("verifyFirebaseToken", () => {
-    test("calls next if valid token in headers", async () => {
-      req.headers.authorization = "Bearer valid-token";
-      await verifyFirebaseToken(req, res, next);
-      expect(req.user).toEqual({ uid: "123" });
-      expect(next).toHaveBeenCalled();
-    });
+  // --- verifyFirebaseToken tests ---
+  test("calls next() when valid token provided", async () => {
+    req.headers.authorization = "Bearer valid-token";
+    mockVerifyIdToken.mockResolvedValue({ uid: "123", email: "test@test.com" });
 
-    test("redirects if no token and page request", async () => {
-      await verifyFirebaseToken(req, res, next);
-      expect(res.redirect).toHaveBeenCalledWith("/auth/login");
-      expect(next).not.toHaveBeenCalled();
-    });
+    await verifyFirebaseToken(req, res, next);
 
-    test("returns 401 JSON if no token and API request", async () => {
-      req.headers.accept = "application/json";
-      await verifyFirebaseToken(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({ error: "Not authenticated" });
-    });
-
-    test("returns 401 JSON if invalid token", async () => {
-      req.headers.authorization = "Bearer invalid-token";
-      req.headers.accept = "application/json";
-      await verifyFirebaseToken(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({ error: "Invalid token" });
-    });
+    expect(mockVerifyIdToken).toHaveBeenCalledWith("valid-token");
+    expect(req.user).toEqual({ uid: "123", email: "test@test.com" });
+    expect(next).toHaveBeenCalled();
   });
 
-  describe("checkSession", () => {
-    test("calls next if session user exists", () => {
-      req.session.user = { uid: "123" };
-      checkSession(req, res, next);
-      expect(next).toHaveBeenCalled();
-    });
+  test("returns 401 JSON when no token on API request", async () => {
+    req.headers.accept = "application/json";
 
-    test("redirects to login if session user missing and page request", () => {
-      checkSession(req, res, next);
-      expect(res.redirect).toHaveBeenCalledWith("/auth/login");
-      expect(next).not.toHaveBeenCalled();
-    });
+    await verifyFirebaseToken(req, res, next);
 
-    test("returns 401 JSON if session user missing and API request", () => {
-      req.headers.accept = "application/json";
-      checkSession(req, res, next);
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({ error: "Unauthorized" });
-    });
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Not authenticated" });
+  });
+
+  test("redirects to login when no token on page request", async () => {
+    req.headers.accept = "text/html";
+
+    await verifyFirebaseToken(req, res, next);
+
+    expect(res.redirect).toHaveBeenCalledWith("/auth/login");
+  });
+
+  test("returns 401 JSON on invalid token for API request", async () => {
+    req.headers.authorization = "Bearer invalid-token";
+    mockVerifyIdToken.mockRejectedValue(new Error("Invalid token"));
+
+    await verifyFirebaseToken(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Invalid token" });
+  });
+
+  test("redirects to login on invalid token for page request", async () => {
+    req.headers.authorization = "Bearer invalid-token";
+    req.headers.accept = "text/html";
+    mockVerifyIdToken.mockRejectedValue(new Error("Invalid token"));
+
+    await verifyFirebaseToken(req, res, next);
+
+    expect(res.redirect).toHaveBeenCalledWith("/auth/login");
+  });
+
+  // --- checkSession tests ---
+  test("checkSession calls next() when session user exists", () => {
+    req.session.user = { uid: "123" };
+    checkSession(req, res, next);
+
+    expect(next).toHaveBeenCalled();
+  });
+
+  test("checkSession returns 401 JSON for API request when session missing", () => {
+    req.headers.accept = "application/json";
+
+    checkSession(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: "Unauthorized" });
+  });
+
+  test("checkSession redirects to login for page request when session missing", () => {
+    req.headers.accept = "text/html";
+
+    checkSession(req, res, next);
+
+    expect(res.redirect).toHaveBeenCalledWith("/auth/login");
   });
 });
