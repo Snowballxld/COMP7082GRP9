@@ -1,7 +1,7 @@
 // __tests__/logger.test.js
 import { jest } from "@jest/globals";
 
-// Mock firebase-admin before importing logger
+// --- Mock firebase-admin before importing logger ---
 const mockAdd = jest.fn().mockResolvedValue({});
 const mockCollection = jest.fn(() => ({ add: mockAdd }));
 await jest.unstable_mockModule("firebase-admin", () => ({
@@ -10,7 +10,7 @@ await jest.unstable_mockModule("firebase-admin", () => ({
   },
 }));
 
-// Mock winston to avoid writing files
+// --- Mock winston ---
 const mockInfo = jest.fn();
 const mockWarn = jest.fn();
 const mockError = jest.fn();
@@ -32,8 +32,10 @@ await jest.unstable_mockModule("winston", () => ({
   },
 }));
 
-// Mock morgan
+// --- Mock morgan ---
 await jest.unstable_mockModule("morgan", () => jest.fn(() => () => null));
+
+// --- Mock chalk correctly (named exports, not default) ---
 await jest.unstable_mockModule("chalk", () => ({
   red: (s) => s,
   yellow: (s) => s,
@@ -43,6 +45,7 @@ await jest.unstable_mockModule("chalk", () => ({
   magenta: (s) => s,
 }));
 
+// --- Import the actual logger now ---
 const { logCritical } = await import("../middleware/logger.js");
 
 describe("logger.js – logCritical", () => {
