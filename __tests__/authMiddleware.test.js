@@ -11,8 +11,8 @@ await jest.unstable_mockModule("../config/firebase.js", () => ({
   },
 }));
 
-// 2️⃣ Import the middleware AFTER the mock
-import * as middleware from "../middleware/authMiddleware.js";
+// 2️⃣ Import the middleware AFTER mocking
+const middleware = await import("../middleware/authMiddleware.js");
 
 describe("Auth Middleware", () => {
   let req, res, next;
