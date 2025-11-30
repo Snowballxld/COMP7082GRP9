@@ -1,8 +1,9 @@
 // __tests__/authMiddleware.test.js
-import { verifyFirebaseToken, checkSession } from "../middleware/authMiddleware.js";
+import { jest } from '@jest/globals';
+import { expect, describe, test, beforeEach } from '@jest/globals';
 
-// --- Mock Firebase Admin ---
-jest.mock("../config/firebase.js", () => ({
+// --- ESM async mock ---
+const firebaseMock = {
   default: {
     auth: () => ({
       verifyIdToken: jest.fn((token) => {
@@ -11,22 +12,20 @@ jest.mock("../config/firebase.js", () => ({
       }),
     }),
   },
-}));
+};
+
+// Unstable mock module
+await jest.unstable_mockModule('../config/firebase.js', () => firebaseMock);
+
+// Import middleware after mock
+const { verifyFirebaseToken, checkSession } = await import('../middleware/authMiddleware.js');
 
 describe("Auth Middleware", () => {
   let req, res, next;
 
   beforeEach(() => {
-    req = {
-      headers: {},
-      session: {},
-      xhr: false,
-    };
-    res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-      redirect: jest.fn(),
-    };
+    req = { headers: {}, session: {}, xhr: false };
+    res = { status: jest.fn().mockReturnThis(), json: jest.fn(), redirect: jest.fn() };
     next = jest.fn();
   });
 
