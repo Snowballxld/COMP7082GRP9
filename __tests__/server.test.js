@@ -1,71 +1,54 @@
-import { jest } from "@jest/globals";     // <-- REQUIRED for ESM tests
+// __tests__/server.test.js
 import request from "supertest";
+import app from "../server.js";
 
-// ------------------------
-// Mock Needed Modules
-// ------------------------
-await jest.unstable_mockModule("../config/firebase.js", () => ({
-  default: {
-    firestore: () => ({
-      collection: () => ({
-        doc: () => ({
-          get: jest.fn(),
-          set: jest.fn(),
-          update: jest.fn(),
-        }),
-        get: jest.fn(),
-      }),
-    }),
-  },
-}));
-
-await jest.unstable_mockModule("../middleware/logger.js", () => ({
-  requestLogger: (req, res, next) => next(),
-}));
-
-await jest.unstable_mockModule("../middleware/errorHandler.js", () => ({
-  errorHandler: (err, req, res, next) => {
-    res.status(500).json({ error: "Test error handler triggered" });
-  },
-}));
-
-// Import the server AFTER mocks
-const { default: app } = await import("../server.js");
-
-// ------------------------
-// Test Suites
-// ------------------------
 describe("SERVER.JS – Core Express Setup", () => {
-  test("App loads successfully", () => {
+  test("App instance exists", () => {
     expect(app).toBeDefined();
   });
 
-  test("GET /health returns JSON ok", async () => {
-    const res = await request(app).get("/health");
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: "ok" });
+  test("Session middleware is installed", () => {
+    const middlewares = app._router.stack
+      .filter(r => r.name === "session" || r.handle.name === "session");
+    expect(middlewares.length).toBeGreaterThan(0);
   });
+});
 
-  test("EJS index page renders", async () => {
+describe("Public routes", () => {
+  test("GET / returns 200 and HTML content", async () => {
     const res = await request(app).get("/");
     expect(res.status).toBe(200);
     expect(res.text).toContain("<!DOCTYPE");
   });
-});
 
-describe("Session Middleware", () => {
-  test("Session cookie is created", async () => {
-    const res = await request(app).get("/");
-    const cookies = res.headers["set-cookie"] || [];
-    const sid = cookies.find((c) => c.includes("connect.sid"));
-    expect(sid).toBeDefined();
+  test("GET /about returns 200 and contains 'about'", async () => {
+    const res = await request(app).get("/about");
+    expect(res.status).toBe(200);
+    expect(res.text.toLowerCase()).toContain("about");
+  });
+
+  test("GET /health returns JSON status ok", async () => {
+    const res = await request(app).get("/health");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ status: "ok" });
   });
 });
 
-describe("Unknown Route", () => {
-  test("GET /non-existent redirects to /", async () => {
-    const res = await request(app).get("/does/not/exist");
+describe("Protected routes (check session redirect)", () => {
+  const protectedRoutes = ["/map", "/bcit-map", "/nodes", "/favorites"];
+
+  protectedRoutes.forEach(route => {
+    test(`GET ${route} redirects when session missing`, async () => {
+      const res = await request(app).get(route);
+      expect(res.status).toBe(302);
+    });
+  });
+});
+
+describe("Catch-all route", () => {
+  test("GET /some/random/path redirects to /", async () => {
+    const res = await request(app).get("/some/random/path");
     expect(res.status).toBe(302);
-    expect(res.headers.location).toBe("/");
+    expect(res.header.location).toBe("/");
   });
 });
