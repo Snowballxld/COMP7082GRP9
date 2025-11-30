@@ -1,9 +1,9 @@
 // __tests__/authMiddleware.test.js
-import { jest } from '@jest/globals';
+import { jest } from "@jest/globals";
 
-// --- Mock Firebase admin BEFORE importing middleware ---
+// 1️⃣ Mock Firebase BEFORE importing middleware
 const mockVerifyIdToken = jest.fn();
-await jest.unstable_mockModule('../config/firebase.js', () => ({
+await jest.unstable_mockModule("../config/firebase.js", () => ({
   default: {
     auth: () => ({
       verifyIdToken: mockVerifyIdToken,
@@ -11,8 +11,8 @@ await jest.unstable_mockModule('../config/firebase.js', () => ({
   },
 }));
 
-// Now import the middleware AFTER the mock
-import * as middleware from '../middleware/authMiddleware.js';
+// 2️⃣ Import the middleware AFTER the mock
+import * as middleware from "../middleware/authMiddleware.js";
 
 describe("Auth Middleware", () => {
   let req, res, next;
@@ -22,7 +22,7 @@ describe("Auth Middleware", () => {
     res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
-      redirect: jest.fn()
+      redirect: jest.fn(),
     };
     next = jest.fn();
     mockVerifyIdToken.mockReset();
@@ -54,6 +54,7 @@ describe("Auth Middleware", () => {
   test("returns 401 JSON on invalid token for API request", async () => {
     req.headers.authorization = "Bearer invalid-token";
     mockVerifyIdToken.mockRejectedValue(new Error("Invalid token"));
+
     await middleware.verifyFirebaseToken(req, res, next);
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({ error: "Invalid token" });
@@ -63,6 +64,7 @@ describe("Auth Middleware", () => {
     req.headers.authorization = "Bearer invalid-token";
     req.headers.accept = "text/html";
     mockVerifyIdToken.mockRejectedValue(new Error("Invalid token"));
+
     await middleware.verifyFirebaseToken(req, res, next);
     expect(res.redirect).toHaveBeenCalledWith("/auth/login");
   });
