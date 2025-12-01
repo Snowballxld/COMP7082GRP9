@@ -15,9 +15,6 @@ import { requestLogger } from "./middleware/logger.js";
 import { errorHandler } from './middleware/errorHandler.js';
 import admin from './config/firebase.js';
 
-console.log('Firebase Admin initialized:', !!admin); // temporary check
-
-
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
