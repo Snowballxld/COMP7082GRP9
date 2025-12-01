@@ -200,9 +200,40 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   const buildPopupHTML = ({ title, buildingAddress, services, floorItems }) => {
-    const floorsHTML = floorItems && floorItems.length ? floorItems.map(({ label, pdfUrl }) => `\n        <div style="display:flex;justify-content:space-between;align-items:center;padding:.45rem .6rem;border-top:1px solid #f1f1f1;">\n          <div style="font-weight:600;">Floor ${label}</div>\n          <a href="${pdfUrl}" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">PDF</a>\n        </div>\n      `).join('') : `<div style="padding:.55rem .6rem;opacity:.7;">No floor plans found.</div>`;
+    const floorsHTML = floorItems && floorItems.length ? floorItems.map(({ label, pdfUrl }) =>
+      `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.45rem .6rem;border-top:1px solid #f1f1f1;">
+          <div style="font-weight:600;">Floor ${label}</div>
+          <a href="${pdfUrl}" target="_blank" rel="noopener" style="color:#2563eb;text-decoration:none;">PDF</a>
+        </div>
+      `
+    ).join('')
+      : `<div style="padding:.55rem .6rem;opacity:.7;">No floor plans found.</div>`;
 
-    return `\n    <div class="bcit-popup" style="font-family:system-ui;width:360px;">\n      <h3 style="margin:0 0 .25rem 0;font-size:1.15rem;font-weight:600;">${title}</h3>\n\n      <div style="margin-top:.6rem;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);">\n        <div style="display:grid;grid-template-columns:38% 62%;border-bottom:1px solid #e5e7eb;">\n          <div style="padding:.55rem .6rem;font-weight:600;background:#f9fafb;">Building</div>\n          <div style="padding:.55rem .6rem;">${buildingAddress || '—'}</div>\n        </div>\n\n        <div style="display:grid;grid-template-columns:38% 62%;border-bottom:1px solid #e5e7eb;">\n          <div style="padding:.55rem .6rem;font-weight:600;background:#f9fafb;">Service</div>\n          <div style="padding:.55rem .6rem;">${services || '—'}</div>\n        </div>\n\n        <div>\n          <div style="padding:.55rem .6rem;font-weight:600;background:#f9fafb;border-bottom:1px solid #e5e7eb;">Floor Plans</div>\n          ${floorsHTML}\n        </div>\n      </div>\n    </div>\n  `;
+    return `
+      <div class="bcit-popup" style="font-family:system-ui;width:360px;">
+        
+        <h3 style="margin:0 0 .25rem 0;font-size:1.15rem;font-weight:600;">${title}</h3>
+
+        <div style="margin-top:.6rem;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);">
+          
+          <div style="display:grid;grid-template-columns:38% 62%;border-bottom:1px solid #e5e7eb;">
+            <div style="padding:.55rem .6rem;font-weight:600;background:#f9fafb;">Building</div>
+            <div style="padding:.55rem .6rem;">${buildingAddress || '—'}</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:38% 62%;border-bottom:1px solid #e5e7eb;">
+            <div style="padding:.55rem .6rem;font-weight:600;background:#f9fafb;">Service</div>
+            <div style="padding:.55rem .6rem;">${services || '—'}</div>
+          </div>
+
+          <div>
+            <div style="padding:.55rem .6rem;font-weight:600;background:#f9fafb;border-bottom:1px solid #e5e7eb;">Floor Plans</div>
+            ${floorsHTML}
+          </div>
+        </div>
+      </div>
+    `;
   };
 
   // ----------------- Navigation UI + state (V2 - identical to V1's functionality) -----------------
@@ -247,7 +278,30 @@ window.addEventListener("DOMContentLoaded", () => {
     navPanel.style.fontSize = '12px';
     navPanel.style.maxWidth = '420px';
 
-    navPanel.innerHTML = `\n      <div style="display:flex;align-items:center;gap:8px;">\n        <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;">\n          <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">\n            <div style="width:8px;height:8px;border-radius:999px;background:#3b82f6;"></div>\n            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\n              <span style="color:#6b7280;">From</span>\n              <span id="bcit-nav-from" style="font-weight:600;margin-left:4px;"></span>\n            </div>\n          </div>\n          <div style="display:flex;align-items:center;gap:6px;">\n            <div style="width:8px;height:8px;border-radius:999px;background:#ef4444;"></div>\n            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\n              <span style="color:#6b7280;">To</span>\n              <span id="bcit-nav-to" style="font-weight:600;margin-left:4px;"></span>\n            </div>\n          </div>\n        </div>\n        <button type="button" id="bcit-nav-close" aria-label="Clear route" style="border:none;background:transparent;cursor:pointer;padding:4px;margin-left:4px;font-size:16px;line-height:1;color:#6b7280;">×</button>\n      </div>\n    `;
+    navPanel.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+          
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:1px;">
+            <div style="width:8px;height:8px;border-radius:999px;background:#3b82f6;"></div>
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              <span style="color:#6b7280;">From</span>
+              <span id="bcit-nav-from" style="font-weight:600;margin-left:4px;"></span>
+            </div>
+          </div>
+          
+            <div style="display:flex;align-items:center;gap:4px;">
+            <div style="width:8px;height:8px;border-radius:999px;background:#ef4444;"></div>
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              <span style="color:#6b7280;">To</span>
+              <span id="bcit-nav-to" style="font-weight:600;margin-left:4px;"></span>
+            </div>
+          </div>
+        </div>
+        
+                <button type="button" id="bcit-nav-close" aria-label="Clear route" style="border:none;background:transparent;cursor:pointer;padding:4px;margin-left:4px;font-size:16px;line-height:1;color:#6b7280;">×</button>
+      </div>
+    `;
 
     mapContainer.appendChild(navPanel);
     navFromLabelEl = navPanel.querySelector('#bcit-nav-from');
