@@ -2,6 +2,8 @@ import express from "express";
 import { checkSession } from "../middleware/authMiddleware.js";
 import admin from "../config/firebase.js";
 
+import { handlePathRequest } from "../controllers/pathfinderController.js";
+
 const router = express.Router();
 const db = admin.firestore();
 
@@ -31,13 +33,13 @@ router.post("/nodes", checkSession, async (req, res) => {
   let { alt, connections, lat, long } = req.body;
 
   if (!alt || !connections || !lat || !long) {
-    console.log("alt: " + alt + "\nconnections: " + connections + "\nlat: " + lat + "\nlong: " + long )
-    return res.status(400).json({ error: "Missing fields: alt, connections, lat, long required"});
+    console.log("alt: " + alt + "\nconnections: " + connections + "\nlat: " + lat + "\nlong: " + long)
+    return res.status(400).json({ error: "Missing fields: alt, connections, lat, long required" });
   }
 
   const newNode = {
     alt,
-    connections,  
+    connections,
     lat: Number(lat),
     long: Number(long)
   };
@@ -68,6 +70,14 @@ router.get('/favorites', checkSession, (req, res) => {
     user: req.session.user
   });
 });
+
+// Interior map page
+router.get('/interior', (req, res) => {
+  res.render('interior', { page: 'interior', title: 'Building Map Navigator – Interior' });
+});
+
+// Pathfinding submission
+router.post("/find-path", handlePathRequest);
 
 
 // --- Test Logging Route ---

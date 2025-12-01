@@ -210,6 +210,15 @@
       }
       clearSelectedRoom();
       renderFloorPanel();
+
+      if (window.BCITMap && typeof window.BCITMap.overlayTransparentPath === 'function') {
+        // Attempt to overlay the path for the new floor
+        window.BCITMap.overlayTransparentPath(currentBuildingCode, currentFloorLabel);
+      } else {
+        // If the image update function isn't ready/visible, clear the image source directly (fallback)
+        const pathImageSrc = map.getSource('path-image-source');
+        if (pathImageSrc) pathImageSrc.setCoordinates([[0, 0], [0, 0], [0, 0], [0, 0]]);
+      }
     });
 
     // ---------------- Floor source / layers ----------------
@@ -390,16 +399,14 @@
           <div style="font-weight:600;font-size:1rem;margin-bottom:.25rem;">
             ${room}
           </div>
-          ${
-            subtitle
-              ? `<div style="font-size:.85rem;color:#4b5563;margin-bottom:.1rem;">${subtitle}</div>`
-              : ""
-          }
-          ${
-            typeLabel
-              ? `<div style="font-size:.8rem;color:#6b7280;margin-bottom:.5rem;">Type: <strong>${typeLabel}</strong></div>`
-              : ""
-          }
+          ${subtitle
+          ? `<div style="font-size:.85rem;color:#4b5563;margin-bottom:.1rem;">${subtitle}</div>`
+          : ""
+        }
+          ${typeLabel
+          ? `<div style="font-size:.8rem;color:#6b7280;margin-bottom:.5rem;">Type: <strong>${typeLabel}</strong></div>`
+          : ""
+        }
           <div style="display:flex;gap:.4rem;margin-top:.35rem;">
             <button
               style="
