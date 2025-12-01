@@ -1,80 +1,76 @@
-// __tests__/auth-client.test.js
+/**
+ * __tests__/auth-client.test.js
+ *
+ * Complete working test file for browser Firebase code.
+ * Requires Jest in ESM mode ("type": "module" in package.json).
+ */
 
-// Mock Firebase browser imports
-jest.mock("https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js", () => ({
-  initializeApp: jest.fn(() => "mockApp"),
-}), { virtual: true });
+// Mock Firebase CDN modules BEFORE importing the script
+jest.unstable_mockModule(
+  "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js",
+  () => ({
+    initializeApp: jest.fn(() => "mockApp"),
+  })
+);
 
-jest.mock("https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js", () => ({
-  getAuth: jest.fn(() => "mockAuth"),
-  signInWithEmailAndPassword: jest.fn(() =>
-    Promise.resolve({
-      user: {
-        getIdToken: jest.fn(() => Promise.resolve("mockToken")),
-      },
-    })
-  ),
-  signOut: jest.fn(() => Promise.resolve()),
-}), { virtual: true });
+jest.unstable_mockModule(
+  "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js",
+  () => ({
+    getAuth: jest.fn(() => "mockAuth"),
+    signInWithEmailAndPassword: jest.fn(() =>
+      Promise.resolve({
+        user: {
+          getIdToken: jest.fn(() => Promise.resolve("mockToken")),
+        },
+      })
+    ),
+    signOut: jest.fn(() => Promise.resolve()),
+  })
+);
 
-// Now load your script
-import "../public/js/auth-client.js";
+// ---- Setup JSDOM DOM elements ----
+document.body.innerHTML = `
+  <form id="loginForm">
+    <input id="email" value="test@test.com" />
+    <input id="password" value="123456" />
+    <button type="submit">Login</button>
+  </form>
 
-describe("auth-client", () => {
-  test("fake test", () => {
+  <div id="error"></div>
+  <button id="logoutBtn" style="display:none"></button>
+`;
+
+// Mock fetch because auth-client.js calls it
+global.fetch = jest.fn(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({ status: "ok" }),
+  })
+);
+
+// ---- Import script after mocks and dom exist ----
+await import("../public/js/auth-client.js");
+
+
+// ----------------------
+// Actual Tests
+// ----------------------
+describe("auth-client.js", () => {
+  test("dummy test runs", () => {
     expect(true).toBe(true);
   });
+
+  test("login form triggers Firebase signIn", async () => {
+    const loginForm = document.getElementById("loginForm");
+
+    // Submit event
+    loginForm.dispatchEvent(new Event("submit"));
+
+    // Let promises resolve
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Check fetch call
+    expect(global.fetch).toHaveBeenCalled();
+  });
 });
-
-const firebaseConfig = window.firebaseConfig;
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-const loginForm = document.getElementById('loginForm');
-const errorElem = document.getElementById('error');
-const logoutBtn = document.getElementById('logoutBtn');
-
-loginForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const token = await userCredential.user.getIdToken();
-
-    const res = await fetch('/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ idToken: token }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Login failed");
-
-    errorElem.textContent = "";
-    logoutBtn.style.display = 'block';
-    loginForm.style.display = 'none';
-
-    // After receiving verification response
-    if (res.ok) {
-      // store session/local info
-      localStorage.setItem('user', 'true');
-      // redirect to home
-      window.location.href = "/";
-    }
-
-  } catch (err) {
-    console.error(err);
-    errorElem.textContent = "Invalid credentials or network error. " + err;
-  }
-});
-
-logoutBtn.addEventListener('click', async () => {
-  await fetch('/auth/sessionLogout', { method: 'POST' });
-  localStorage.removeItem('user');
-  logoutBtn.style.display = 'none';
-  loginForm.style.display = 'block';
-  window.location.href = "/auth/login";
-});
-
