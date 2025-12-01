@@ -1,8 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
 
-// Fixed and consolidated public/js/bcit-map-core.js (MERGED V1 & V2)
-
 window.addEventListener("DOMContentLoaded", () => {
   if (!window.mapboxgl) {
     console.error("[BCIT MAP] Mapbox GL JS failed to load.");
@@ -22,18 +20,15 @@ window.addEventListener("DOMContentLoaded", () => {
   // --- Map setup ---
   const BCIT_BURNABY = { lng: -123.001, lat: 49.251 }; // tweak if needed
 
-  // -------------------- NODE GRAPH CACHES & HELPERS (V2) --------------------
   const NODE_CACHE = { nodes: null, nodeMap: null, graph: null };
   let isComputingPath = false;
   let isOverlayingIndoor = false;
 
   function removeLayerIfExists(id) {
-    try {
-      if (map.getLayer(id)) map.removeLayer(id);
-    } catch (e) { }
-    try {
-      if (map.getSource(id)) map.removeSource(id);
-    } catch (e) { }
+
+    if (map.getLayer(id)) map.removeLayer(id);
+    if (map.getSource(id)) map.removeSource(id);
+
   }
 
   function haversineDistance([lng1, lat1], [lng2, lat2]) {
@@ -115,7 +110,6 @@ window.addEventListener("DOMContentLoaded", () => {
     mapContainer.style.position = 'relative';
   }
 
-  // ----------------- Shared helpers (V1 & V2 - identical) -----------------
   const getJSON = async (url) => {
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`${res.status} ${res.statusText} for ${url}`);
@@ -236,7 +230,6 @@ window.addEventListener("DOMContentLoaded", () => {
     `;
   };
 
-  // ----------------- Navigation UI + state (V2 - identical to V1's functionality) -----------------
   let navPanel = null;
   let navFromLabelEl = null;
   let navToLabelEl = null;
@@ -317,7 +310,6 @@ window.addEventListener("DOMContentLoaded", () => {
       }
       if (!map.getLayer('path-image-layer')) {
         map.addLayer({ id: 'path-image-layer', type: 'raster', source: 'path-image-source', paint: { 'raster-opacity': 1.0, 'raster-fade-duration': 0 } });
-        // V2 improvement: move indoor path layer below floor plan line layer (if it exists)
         if (map.getLayer('building-floor-line')) map.moveLayer('path-image-layer', 'building-floor-line');
       }
       return map.getSource('path-image-source');
@@ -341,34 +333,26 @@ window.addEventListener("DOMContentLoaded", () => {
     if (startMarker) { startMarker.remove(); startMarker = null; }
     if (endMarker) { endMarker.remove(); endMarker = null; }
 
-    try {
-      const navSrc = map.getSource('nav-route');
-      if (navSrc) navSrc.setData({ type: 'FeatureCollection', features: [] });
-    } catch (e) { }
+    const navSrc = map.getSource('nav-route');
+    if (navSrc) navSrc.setData({ type: 'FeatureCollection', features: [] });
 
-    try {
-      // V2 improvement: Hide indoor path overlay
-      if (map.getLayer('path-image-layer')) map.setLayoutProperty('path-image-layer', 'visibility', 'none');
-    } catch (e) { }
+    if (map.getLayer('path-image-layer')) map.setLayoutProperty('path-image-layer', 'visibility', 'none');
 
-    try { // V2 improvement: remove existing outdoor highlight path
-      removeLayerIfExists('highlight-path-line');
-      if (map.getSource('highlight-path')) map.removeSource('highlight-path');
-    } catch (e) { }
 
+    removeLayerIfExists('highlight-path-line');
+    if (map.getSource('highlight-path')) map.removeSource('highlight-path');
 
     if (navPanel) navPanel.style.display = 'none';
-    // custom start marker stays so you can reuse it
   };
 
   const clearCustomStart = () => { customStartLocation = null; customStartLabel = null; if (customStartMarker) { customStartMarker.remove(); customStartMarker = null; } };
   window.addEventListener('keydown', (e) => { if (e.key === 'Escape') clearNavigation(); });
 
-  const setRouteLine = (startLngLat, endLngLat) => {
-    const navSrc = map.getSource('nav-route');
-    if (!navSrc) return;
-    navSrc.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [startLngLat, endLngLat] } }] });
-  };
+  // const setRouteLine = (startLngLat, endLngLat) => {
+  //   const navSrc = map.getSource('nav-route');
+  //   if (!navSrc) return;
+  //   navSrc.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: [startLngLat, endLngLat] } }] });
+  // };
 
   const setCustomStartLocation = (lng, lat, label) => {
     if (typeof lng !== 'number' || typeof lat !== 'number') return;
@@ -380,9 +364,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const setStartFromRoom = (payload) => { if (!payload) return; const lng = typeof payload.lng === 'number' ? payload.lng : null; const lat = typeof payload.lat === 'number' ? payload.lat : null; if (lng == null || lat == null) return; const label = makeRoomLabel((payload.building || '').trim(), (payload.floor || '').trim(), (payload.room || '').trim()); setCustomStartLocation(lng, lat, label); };
 
-  // ---------------------- HYBRID PATHING LOGIC (V2) -------------------
-
-  // V2: Indoor path bounds (needed for image overlay)
   const FLOOR_BOUNDS = {
     SW03: {
       '1': [[-123.00350, 49.25016], [-123.00180, 49.25015], [-123.00180, 49.24971], [-123.00350, 49.24972]],
@@ -395,14 +376,11 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   const overlayTransparentPath = (buildingCode, floorLabel) => {
-    // V2 logic: standardizes code format
     const code = buildingCode.toUpperCase().slice(0, 2) + '0' + buildingCode.toUpperCase().slice(2);
     const floor = String(floorLabel).trim();
     const bounds = FLOOR_BOUNDS[code]?.[floor];
 
-    try {
-      if (map.getLayer('path-image-layer')) map.setLayoutProperty('path-image-layer', 'visibility', 'none');
-    } catch (e) { }
+    if (map.getLayer('path-image-layer')) map.setLayoutProperty('path-image-layer', 'visibility', 'none');
 
     if (!bounds) {
       console.warn('No bounds for', code, floor);
@@ -429,12 +407,8 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     isOverlayingIndoor = true;
     try {
-      // V2: Clear previous overlay
-      try {
-        if (map.getLayer('path-image-layer')) map.setLayoutProperty('path-image-layer', 'visibility', 'none');
-      } catch (e) { }
+      if (map.getLayer('path-image-layer')) map.setLayoutProperty('path-image-layer', 'visibility', 'none');
 
-      // V2: Standardize code format for API call
       const payload = {
         startBuildingCode: startBuildingCode.slice(0, 2).toLowerCase() + '0' + startBuildingCode.slice(2),
         startRoom: startRoomOrEntrance,
@@ -468,7 +442,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const navigateToRoom = (payload) => {
     if (!payload) return;
 
-    // V2: Clear previous markers and overlays
     clearNavigation();
 
     ensureNavPanel();
@@ -479,7 +452,6 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // V2: Decide start point (Your location > Custom start > Map center)
     let startLngLat = customStartLocation
       ? [customStartLocation.lng, customStartLocation.lat]
       : lastUserLocation
@@ -502,7 +474,6 @@ window.addEventListener("DOMContentLoaded", () => {
     navActive = true;
     renderNavPanel(fromLabel, toLabel);
 
-    // V2: Trigger hybrid path computation
     const goalBuildingCode = b.toUpperCase();
 
     // Check if the current start point is *inside* the goal building
@@ -520,16 +491,12 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
 
-  // ---------------------- Node Paths Rendering and Pathing (V2) -------------------
-  // V2: Mapping from node ID to building entrance label (used for indoor path API)
   const NODE_TO_ENTRANCE = { 'KNaebx1eeVllD7deAFJp': 'entranceNorth', 'W8FqDrl1CLrSWGcr9vKF': 'entranceWest', 'gmlstBCtf9yFlYVwfj6j': 'entranceWest', 'bvxgjQTQnwcmX3Nlx5xG': 'entranceEast' };
 
-  // V2: Hardcoded node mappings for buildings
   var mappings = { buildings: [{ SE2: ['nm1KmtC32lWvkRI0o47h'], SE6: ['nm1KmtC32lWvkRI0o47h', 'olOybFkcL55aIoU4oPsr', '0FdawMKkva5iTlBdQzNV'], SE8: [], SE9: ['kG5PUBG7CkQj9rXuzOMU'], SE12: ['gKvd6XdaIiHcfr85GkUF', 'm6biNg1zOP4LjEJggXNq', '8TKg5bDrGREkBUZdpOx9'], SE10: ['8ietTS5ObfoAGgphnS1J'], SE14: ['V1sdLc0eMnyteBX2sIZg', 'AKqKqS0acPUMAOxqT9mt', 'yIRjTdLiojB94pfR1EkL'], SW3: ['USSskvVDADEHwNi6gM1z', 'bvxgjQTQnwcmX3Nlx5xG', 'gmlstBCtf9yFlYVwfj6j'], SW5: ['W8FqDrl1CLrSWGcr9vKF', 'KNaebx1eeVllD7deAFJp'] }] };
 
   const SHOW_ALL_LINKS = true;
 
-  // V2: Exposed function for outdoor path calculation
   window.highlightPathTo = async function ({ building, indoorPayload, startCoord }) {
     console.log('Starting hybrid path:', building);
     const possible = mappings['buildings'][0][building] || [];
@@ -537,7 +504,6 @@ window.addEventListener("DOMContentLoaded", () => {
     computePathFromGraph(startCoord || [-122.99999, 49.25097], possible, indoorPayload);
   };
 
-  // V2: Core Dijkstra calculation and rendering
   async function computePathFromGraph(startCoord, endNodeList, indoorPayload) {
     if (isComputingPath) { console.log('[PATH] already computing'); return; }
     isComputingPath = true;
@@ -556,7 +522,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
       if (!startId || !endId) { console.warn('[PATH] Could not determine start or end node.', startId, endId); return; }
 
-      // Dijkstra implementation (V2)
       function dijkstra(startId, endId) {
         const dist = new Map(); const prev = new Map(); const pq = new Set(graph.keys()); graph.forEach((_, id) => dist.set(id, Infinity)); dist.set(startId, 0);
         while (pq.size) {
@@ -573,7 +538,6 @@ window.addEventListener("DOMContentLoaded", () => {
       const path = dijkstra(startId, endId);
       console.log('[PATH] computed:', path);
 
-      // 3. Clear existing path (V2 safe cleanup)
       removeLayerIfExists('highlight-path-line'); if (map.getSource('highlight-path')) map.removeSource('highlight-path');
 
       // 4. Draw new path
@@ -584,7 +548,6 @@ window.addEventListener("DOMContentLoaded", () => {
         map.addSource('highlight-path', { type: 'geojson', data: pathData });
         map.addLayer({ id: 'highlight-path-line', type: 'line', source: 'highlight-path', paint: { 'line-color': '#00AEEF', 'line-width': 5, 'line-opacity': 0.9 } });
 
-        // 5. Trigger indoor overlay (V2)
         if (indoorPayload) {
           const endNode = path[path.length - 1];
           const startEntranceLabel = NODE_TO_ENTRANCE[endNode] || ''; // Get entrance name from closest node
@@ -595,12 +558,8 @@ window.addEventListener("DOMContentLoaded", () => {
     finally { isComputingPath = false; }
   }
 
-  // V2: Deprecated V1 function to ensure it is not called
   async function loadNodes_DO_NOT_USE() { console.warn('Deprecated: loadNodes_DO_NOT_USE called'); }
 
-
-  // ---------------------- Authentication and Favorites (V1 & V2) -------------------
-  // Note: V1 contained loadFavoriteMarkers inline, V2 wrapped it in a try/catch.
   const app = initializeApp(window.firebaseConfig);
   const auth = getAuth(app);
 
@@ -614,11 +573,9 @@ window.addEventListener("DOMContentLoaded", () => {
   async function loadFavoriteMarkers() {
     try {
       const token = await getIdToken();
-      // V2 improvement: cache control 'no-store'
       const favRes = await fetch('/api/favorites', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
       if (!favRes.ok) throw new Error('Failed to load favorites');
       const { favorites } = await favRes.json();
-      // V2 improvement: handle failed node fetch gracefully
       const nodeRes = await fetch('/api/nodes/data', { cache: 'no-store' });
       const nodes = nodeRes.ok ? await nodeRes.json() : [];
 
@@ -648,15 +605,6 @@ window.addEventListener("DOMContentLoaded", () => {
     } catch (err) { console.warn('loadFavoriteMarkers failed:', err); }
   }
 
-
-  // ---------------------- Debug/V1 Legacy Functions -------------------
-  /* // V1's debugLoadNodes is left out because it places markers for ALL nodes, 
-  // which is typically slow/clutter and is replaced by V2's focus on pathing.
-  // The V1 code to draw ALL links is left in the map.on('load') block 
-  // but is only executed if SHOW_ALL_LINKS is true.
-  */
-
-
   // ----------------- Map load + building layers + nav route -----------------
 
   map.on('load', async () => {
@@ -664,7 +612,6 @@ window.addEventListener("DOMContentLoaded", () => {
       const [buildings, buildingsIndex] = await Promise.all([getJSON('/data/bcit-coordinates.geojson'), getJSON('/data/bcit-buildings-index.json')]);
       window.__BUILDINGS_INDEX__ = buildingsIndex || {};
 
-      // V2 Improvement: Initialize graph early (but gracefully handle failure)
       initNodeGraph().catch(err => console.warn('Failed to init graph:', err));
 
       map.addSource('buildings', { type: 'geojson', data: buildings });
@@ -681,17 +628,13 @@ window.addEventListener("DOMContentLoaded", () => {
         map.addLayer({ id: 'building-selected-line', type: 'line', source: selSrc, paint: { 'line-color': '#f59e0b', 'line-width': 3 } });
       }
 
-      // Route source/layer (V1/V2 - identical)
       if (!map.getSource('nav-route')) {
         map.addSource('nav-route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         map.addLayer({ id: 'nav-route-line', type: 'line', source: 'nav-route', paint: { 'line-color': '#0ea5e9', 'line-width': 4, 'line-opacity': 0.9 } });
       }
 
       if (SHOW_ALL_LINKS) {
-        // V1/V2 - Load favorites if user is logged in
         loadFavoriteMarkers();
-        // V1's debugLoadNodes is omitted here to avoid clutter,
-        // but the V1/V2 mechanism for drawing the calculated route is used later.
       }
 
       // Expose map + utils + navigation API
@@ -715,7 +658,6 @@ window.addEventListener("DOMContentLoaded", () => {
       window.BCITMap.setCustomStartLocation = setCustomStartLocation;
       window.BCITMap.clearCustomStart = clearCustomStart;
       window.BCITMap.setStartFromRoom = setStartFromRoom;
-      // V2 addition: placeholder function for plugin focus
       window.BCITMap.focusRoom = window.BCITMap.focusRoom || function () { };
 
       // Run plugins
@@ -732,7 +674,6 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // V2: Remove indoor path overlay on outside click
   map.on('click', (e) => {
     if (!navActive) return;
 
@@ -744,7 +685,9 @@ window.addEventListener("DOMContentLoaded", () => {
     clearNavigation();
     try {
       if (map.getLayer('path-image-layer')) map.setLayoutProperty('path-image-layer', 'visibility', 'none');
-    } catch (err) { }
+    } catch (err) {
+      console.warn('Failed to hide path-image-layer:', err);
+    }
   });
 
 });
