@@ -4,7 +4,7 @@ import { execFile } from "child_process";
 import { handlePathRequest } from "../controllers/pathfinderController.js";
 
 // Mock child_process BEFORE importing handler
-jest.mock("child_process", () => ({
+jest.mock(execFile, () => ({
     execFile: jest.fn(),
 }));
 
