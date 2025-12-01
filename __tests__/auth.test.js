@@ -6,7 +6,7 @@ import authRouter from "../routes/auth.js";
 
 // Mock Firebase Admin (ESM import)
 import * as adminModule from "../config/firebase.js";
-jest.mock("../config/firebase.js", () => ({
+jest.mock(adminModule, () => ({
   default: {
     auth: () => ({
       verifyIdToken: jest.fn(() => Promise.resolve({ uid: "mockUid", email: "test@test.com" })),
@@ -17,7 +17,7 @@ jest.mock("../config/firebase.js", () => ({
 
 // Mock User model
 import User from "../models/user.js";
-jest.mock("../models/user.js", () => {
+jest.mock(User, () => {
   return jest.fn().mockImplementation(() => ({
     getProfile: jest.fn(() => Promise.resolve(null)),
     setProfile: jest.fn(() => Promise.resolve(true)),
@@ -26,7 +26,7 @@ jest.mock("../models/user.js", () => {
 
 // Mock middleware
 import * as authMiddleware from "../middleware/authMiddleware.js";
-jest.mock("../middleware/authMiddleware.js", () => ({
+jest.mock(authMiddleware, () => ({
   verifyFirebaseToken: (req, res, next) => {
     req.user = { uid: "mockUid", email: "test@test.com" };
     next();
