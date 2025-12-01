@@ -54,6 +54,7 @@ app.use(
 
 app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
+app.use(express.urlencoded({ extended: true }));
 
 app.use("/calibrator", calibratorRouter);
 app.use('/auth', authRouter);

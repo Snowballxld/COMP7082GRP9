@@ -1,0 +1,5 @@
+{
+    "connectedBuildings": ["sw05"],
+    "connectedFloors": ["F1"],
+    "connectedEntrances": [["entranceEast","entranceWest"]]
+}
