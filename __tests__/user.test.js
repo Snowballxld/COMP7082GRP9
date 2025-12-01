@@ -23,88 +23,131 @@ const makeDocSnapshot = (path) => ({
 });
 
 // Firestore mock
-jest.unstable_mockModule("../config/firebase.js", () => ({
-  default: {
-    firestore: () => ({
-      collection: (colName) => ({
-        doc: (uid) => ({
-          get: () => Promise.resolve(makeDocSnapshot(`${colName}/${uid}`)),
-          set: (data, opts) => {
-            mockSet(data, opts);
-            mockDocData.set(`${colName}/${uid}`, {
-              ...(mockDocData.get(`${colName}/${uid}`) || {}),
-              ...data
-            });
-            return Promise.resolve();
-          },
-          update: (data) => {
-            mockUpdate(data);
-            mockDocData.set(`${colName}/${uid}`, {
-              ...(mockDocData.get(`${colName}/${uid}`) || {}),
-              ...data
-            });
-            return Promise.resolve();
-          },
-          delete: () => {
-            mockDelete(uid);
-            mockDocData.delete(`${colName}/${uid}`);
-            return Promise.resolve();
-          },
-          collection: (sub) => ({
-            doc: (favId) => ({
-              get: () =>
-                Promise.resolve(
-                  makeDocSnapshot(`${colName}/${uid}/${sub}/${favId}`)
-                ),
-              set: (data) => {
-                mockFavorites.set(
-                  `${colName}/${uid}/${sub}/${favId}`,
-                  data
-                );
-                return Promise.resolve();
-              },
-              update: (data) => {
-                const existing =
-                  mockFavorites.get(
-                    `${colName}/${uid}/${sub}/${favId}`
-                  ) || {};
-                mockFavorites.set(
-                  `${colName}/${uid}/${sub}/${favId}`,
-                  { ...existing, ...data }
-                );
-                return Promise.resolve();
-              },
-              delete: () => {
-                mockFavorites.delete(
+jest.unstable_mockModule("../config/firebase.js", () => {
+  // DOC + COLLECTION MAPPINGS
+  const mockSet = jest.fn();
+  const mockUpdate = jest.fn();
+  const mockDelete = jest.fn();
+
+  const mockDocData = new Map();
+  const mockFavorites = new Map();
+
+  const makeDocSnapshot = (path) => ({
+    exists: mockDocData.has(path),
+    id: path.split("/").pop(),
+    data: () => mockDocData.get(path),
+  });
+
+  const makeFavoriteSnapshot = (path) => ({
+    exists: mockFavorites.has(path),
+    id: path.split("/").pop(),
+    data: () => mockFavorites.get(path),
+  });
+
+  // Firestore Core
+  const firestore = () => ({
+    collection: (colName) => ({
+      doc: (uid) => ({
+        get: () => Promise.resolve(makeDocSnapshot(`${colName}/${uid}`)),
+
+        set: (data, opts) => {
+          mockSet(data, opts);
+          mockDocData.set(`${colName}/${uid}`, {
+            ...(mockDocData.get(`${colName}/${uid}`) || {}),
+            ...data,
+          });
+          return Promise.resolve();
+        },
+
+        update: (data) => {
+          mockUpdate(data);
+          mockDocData.set(`${colName}/${uid}`, {
+            ...(mockDocData.get(`${colName}/${uid}`) || {}),
+            ...data,
+          });
+          return Promise.resolve();
+        },
+
+        delete: () => {
+          mockDelete(uid);
+          mockDocData.delete(`${colName}/${uid}`);
+          return Promise.resolve();
+        },
+
+        collection: (sub) => ({
+          doc: (favId) => ({
+            get: () =>
+              Promise.resolve(
+                makeFavoriteSnapshot(
                   `${colName}/${uid}/${sub}/${favId}`
-                );
-                return Promise.resolve();
-              }
+                )
+              ),
+
+            set: (data) => {
+              mockFavorites.set(
+                `${colName}/${uid}/${sub}/${favId}`,
+                data
+              );
+              return Promise.resolve();
+            },
+
+            update: (data) => {
+              const existing =
+                mockFavorites.get(
+                  `${colName}/${uid}/${sub}/${favId}`
+                ) || {};
+              mockFavorites.set(
+                `${colName}/${uid}/${sub}/${favId}`,
+                { ...existing, ...data }
+              );
+              return Promise.resolve();
+            },
+
+            delete: () => {
+              mockFavorites.delete(
+                `${colName}/${uid}/${sub}/${favId}`
+              );
+              return Promise.resolve();
+            },
+          }),
+
+          orderBy: () => ({
+            limit: () => ({
+              get: () => {
+                const docs = [...mockFavorites.entries()]
+                  .filter(([key]) =>
+                    key.startsWith(`${colName}/${uid}/${sub}/`)
+                  )
+                  .map(([key, val]) => ({
+                    id: key.split("/").pop(),
+                    data: () => val,
+                  }));
+                return Promise.resolve({ docs });
+              },
             }),
-            orderBy: () => ({
-              limit: () => ({
-                get: () => {
-                  const docs = [...mockFavorites.entries()]
-                    .filter(([key]) => key.startsWith(`${colName}/${uid}/${sub}/`))
-                    .map(([key, val]) => ({
-                      id: key.split("/").pop(),
-                      data: () => val
-                    }));
-                  return Promise.resolve({ docs });
-                }
-              })
-            })
-          })
-        })
-      })
+          }),
+        }),
+      }),
     }),
-    firestore: {
-      FieldValue: {
-        serverTimestamp: () => "SERVER_TIMESTAMP"
-      }
-    }
-  }
-}));
+  });
+
+  // ✨ Add FieldValue onto the function object
+  firestore.FieldValue = {
+    serverTimestamp: () => "SERVER_TIMESTAMP",
+  };
+
+  return {
+    default: {
+      firestore,
+    },
+    __mockSet: mockSet,
+    __mockUpdate: mockUpdate,
+    __mockDelete: mockDelete,
+    __mockDocData: mockDocData,
+    __mockFavorites: mockFavorites,
+  };
+});
+
 
 // ------------------------------------------------------
 // Import model AFTER mocks
