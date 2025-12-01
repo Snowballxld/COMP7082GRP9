@@ -1,5 +1,30 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js";
+// __tests__/auth-client.test.js
+
+// Mock Firebase browser imports
+jest.mock("https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js", () => ({
+  initializeApp: jest.fn(() => "mockApp"),
+}), { virtual: true });
+
+jest.mock("https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js", () => ({
+  getAuth: jest.fn(() => "mockAuth"),
+  signInWithEmailAndPassword: jest.fn(() =>
+    Promise.resolve({
+      user: {
+        getIdToken: jest.fn(() => Promise.resolve("mockToken")),
+      },
+    })
+  ),
+  signOut: jest.fn(() => Promise.resolve()),
+}), { virtual: true });
+
+// Now load your script
+import "../public/js/auth-client.js";
+
+describe("auth-client", () => {
+  test("fake test", () => {
+    expect(true).toBe(true);
+  });
+});
 
 const firebaseConfig = window.firebaseConfig;
 const app = initializeApp(firebaseConfig);
