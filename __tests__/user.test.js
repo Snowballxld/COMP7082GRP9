@@ -8,23 +8,10 @@ import { jest } from "@jest/globals";
 // FIREBASE MOCK SETUP
 // ------------------------------------------------------
 
-const mockSet = jest.fn();
-const mockUpdate = jest.fn();
-const mockDelete = jest.fn();
+// ❌ REMOVE all top-level mockSet, mockUpdate, mockDelete, mockDocData, mockFavorites
+// They are duplicated in the mockModule block below.
 
-const mockDocData = new Map(); // stores { path -> data }
-const mockFavorites = new Map(); // stores favorites
-
-// helpers
-const makeDocSnapshot = (path) => ({
-  exists: mockDocData.has(path),
-  id: path.split("/").pop(),
-  data: () => mockDocData.get(path)
-});
-
-// Firestore mock
 jest.unstable_mockModule("../config/firebase.js", () => {
-  // DOC + COLLECTION MAPPINGS
   const mockSet = jest.fn();
   const mockUpdate = jest.fn();
   const mockDelete = jest.fn();
@@ -44,12 +31,10 @@ jest.unstable_mockModule("../config/firebase.js", () => {
     data: () => mockFavorites.get(path),
   });
 
-  // Firestore Core
   const firestore = () => ({
     collection: (colName) => ({
       doc: (uid) => ({
         get: () => Promise.resolve(makeDocSnapshot(`${colName}/${uid}`)),
-
         set: (data, opts) => {
           mockSet(data, opts);
           mockDocData.set(`${colName}/${uid}`, {
@@ -58,7 +43,6 @@ jest.unstable_mockModule("../config/firebase.js", () => {
           });
           return Promise.resolve();
         },
-
         update: (data) => {
           mockUpdate(data);
           mockDocData.set(`${colName}/${uid}`, {
@@ -67,50 +51,35 @@ jest.unstable_mockModule("../config/firebase.js", () => {
           });
           return Promise.resolve();
         },
-
         delete: () => {
           mockDelete(uid);
           mockDocData.delete(`${colName}/${uid}`);
           return Promise.resolve();
         },
-
         collection: (sub) => ({
           doc: (favId) => ({
             get: () =>
               Promise.resolve(
-                makeFavoriteSnapshot(
-                  `${colName}/${uid}/${sub}/${favId}`
-                )
+                makeFavoriteSnapshot(`${colName}/${uid}/${sub}/${favId}`)
               ),
-
             set: (data) => {
-              mockFavorites.set(
-                `${colName}/${uid}/${sub}/${favId}`,
-                data
-              );
+              mockFavorites.set(`${colName}/${uid}/${sub}/${favId}`, data);
               return Promise.resolve();
             },
-
             update: (data) => {
               const existing =
-                mockFavorites.get(
-                  `${colName}/${uid}/${sub}/${favId}`
-                ) || {};
-              mockFavorites.set(
-                `${colName}/${uid}/${sub}/${favId}`,
-                { ...existing, ...data }
-              );
+                mockFavorites.get(`${colName}/${uid}/${sub}/${favId}`) || {};
+              mockFavorites.set(`${colName}/${uid}/${sub}/${favId}`, {
+                ...existing,
+                ...data,
+              });
               return Promise.resolve();
             },
-
             delete: () => {
-              mockFavorites.delete(
-                `${colName}/${uid}/${sub}/${favId}`
-              );
+              mockFavorites.delete(`${colName}/${uid}/${sub}/${favId}`);
               return Promise.resolve();
             },
           }),
-
           orderBy: () => ({
             limit: () => ({
               get: () => {
@@ -131,15 +100,12 @@ jest.unstable_mockModule("../config/firebase.js", () => {
     }),
   });
 
-  // ✨ Add FieldValue onto the function object
   firestore.FieldValue = {
     serverTimestamp: () => "SERVER_TIMESTAMP",
   };
 
   return {
-    default: {
-      firestore,
-    },
+    default: { firestore },
     __mockSet: mockSet,
     __mockUpdate: mockUpdate,
     __mockDelete: mockDelete,
@@ -153,6 +119,14 @@ jest.unstable_mockModule("../config/firebase.js", () => {
 // Import model AFTER mocks
 // ------------------------------------------------------
 const { default: User } = await import("../models/user.js");
+
+const {
+  __mockSet: mockSet,
+  __mockUpdate: mockUpdate,
+  __mockDelete: mockDelete,
+  __mockDocData: mockDocData,
+  __mockFavorites: mockFavorites
+} = await import("../config/firebase.js");
 
 // ------------------------------------------------------
 // TEST SUITE
