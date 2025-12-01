@@ -1,9 +1,6 @@
-/**
- * __tests__/auth-client.test.js
- *
- * Complete working test file for browser Firebase code.
- * Requires Jest in ESM mode ("type": "module" in package.json).
- */
+// __tests__/auth-client.test.js
+// ESM MODE: must import jest explicitly
+import { jest } from "@jest/globals";
 
 // Mock Firebase CDN modules BEFORE importing the script
 jest.unstable_mockModule(
@@ -28,7 +25,7 @@ jest.unstable_mockModule(
   })
 );
 
-// ---- Setup JSDOM DOM elements ----
+// ---- Setup DOM ----
 document.body.innerHTML = `
   <form id="loginForm">
     <input id="email" value="test@test.com" />
@@ -40,7 +37,7 @@ document.body.innerHTML = `
   <button id="logoutBtn" style="display:none"></button>
 `;
 
-// Mock fetch because auth-client.js calls it
+// Mock fetch globally
 global.fetch = jest.fn(() =>
   Promise.resolve({
     ok: true,
@@ -48,29 +45,27 @@ global.fetch = jest.fn(() =>
   })
 );
 
-// ---- Import script after mocks and dom exist ----
+// Import the script after mocks + DOM exist
 await import("../public/js/auth-client.js");
 
 
 // ----------------------
-// Actual Tests
+// TESTS
 // ----------------------
 describe("auth-client.js", () => {
-  test("dummy test runs", () => {
+  test("simple test", () => {
     expect(true).toBe(true);
   });
 
-  test("login form triggers Firebase signIn", async () => {
+  test("login triggers Firebase signInWithEmailAndPassword", async () => {
     const loginForm = document.getElementById("loginForm");
 
-    // Submit event
     loginForm.dispatchEvent(new Event("submit"));
 
-    // Let promises resolve
+    // allow promises to resolve
     await Promise.resolve();
     await Promise.resolve();
 
-    // Check fetch call
     expect(global.fetch).toHaveBeenCalled();
   });
 });
