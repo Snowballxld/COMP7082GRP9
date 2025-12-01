@@ -33,7 +33,6 @@ jest.mock("../middleware/authMiddleware.js", () => ({
   },
 }));
 
-// Setup Express app for testing
 const app = express();
 app.use(express.json());
 app.use(session({ secret: "test", resave: false, saveUninitialized: true }));
