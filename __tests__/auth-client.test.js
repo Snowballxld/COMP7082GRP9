@@ -1,16 +1,19 @@
-// __tests__/auth-client.test.js
-// ESM MODE: must import jest explicitly
+/**
+ * @jest-environment jsdom
+ */
+
 import { jest } from "@jest/globals";
 
-// Mock Firebase CDN modules BEFORE importing the script
-jest.unstable_mockModule(
+// --- Trick Jest into resolving URL imports ---
+jest.mock(
   "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js",
   () => ({
     initializeApp: jest.fn(() => "mockApp"),
-  })
+  }),
+  { virtual: true }
 );
 
-jest.unstable_mockModule(
+jest.mock(
   "https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js",
   () => ({
     getAuth: jest.fn(() => "mockAuth"),
@@ -22,47 +25,43 @@ jest.unstable_mockModule(
       })
     ),
     signOut: jest.fn(() => Promise.resolve()),
-  })
+  }),
+  { virtual: true }
 );
 
-// ---- Setup DOM ----
+// --- Setup DOM required by the script ---
 document.body.innerHTML = `
   <form id="loginForm">
-    <input id="email" value="test@test.com" />
-    <input id="password" value="123456" />
+    <input id="email" />
+    <input id="password" />
     <button type="submit">Login</button>
   </form>
 
   <div id="error"></div>
-  <button id="logoutBtn" style="display:none"></button>
+  <button id="logoutBtn"></button>
 `;
 
-// Mock fetch globally
+// Mock fetch
 global.fetch = jest.fn(() =>
   Promise.resolve({
     ok: true,
-    json: () => Promise.resolve({ status: "ok" }),
+    json: () => Promise.resolve({ ok: true })
   })
 );
 
-// Import the script after mocks + DOM exist
+// Import AFTER mocks
 await import("../public/js/auth-client.js");
 
-
-// ----------------------
-// TESTS
-// ----------------------
 describe("auth-client.js", () => {
-  test("simple test", () => {
+  test("fake test works", () => {
     expect(true).toBe(true);
   });
 
-  test("login triggers Firebase signInWithEmailAndPassword", async () => {
+  test("login triggers fetch()", async () => {
     const loginForm = document.getElementById("loginForm");
-
     loginForm.dispatchEvent(new Event("submit"));
 
-    // allow promises to resolve
+    // Let async handlers resolve
     await Promise.resolve();
     await Promise.resolve();
 
