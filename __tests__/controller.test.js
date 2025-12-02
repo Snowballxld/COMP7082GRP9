@@ -1,13 +1,18 @@
+// __tests__/controller.test.js
 import request from "supertest";
 import express from "express";
-import { execFile } from "child_process";
-import { handlePathRequest } from "../controllers/pathfinderController.js";
 
-// Mock child_process BEFORE importing handler
-jest.mock("child_process", () => ({
+// Mock the module AFTER import using jest.unstable_mockModule
+jest.unstable_mockModule("child_process", () => ({
     execFile: jest.fn(),
 }));
 
+// Re-import mocked version
+const { execFile } = await import("child_process");
+
+import { handlePathRequest } from "../controllers/pathfinderController.js";
+
+// Setup express app
 const app = express();
 app.use(express.json());
 app.post("/find-path", handlePathRequest);
