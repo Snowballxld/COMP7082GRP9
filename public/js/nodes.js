@@ -6,7 +6,6 @@ const auth = getAuth(app);
 
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("nodeForm");
-  const list = document.getElementById("nodesList");
 
   // Fetch existing nodes on page load
   fetch("/api/nodes")
@@ -44,12 +43,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-
-
-
-
-
-
 
 async function loadNodes() {
   try {
@@ -157,6 +150,6 @@ async function addFavorite(nodeId) {
 // ------------------------
 // Initialize page
 // ------------------------
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(_user => {
   loadNodes();
 });
