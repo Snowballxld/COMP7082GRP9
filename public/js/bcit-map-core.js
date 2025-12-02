@@ -606,8 +606,6 @@ window.addEventListener("DOMContentLoaded", () => {
           .addTo(map);
         window.favoriteMarkers.push(marker);
 
-        // Attach event handler after popup loads
-        marker.getElement().addEventListener('click', () => { setTimeout(() => { const btn = document.getElementById(`rm-${node.id}`); }, 80); });
       });
     } catch (err) { console.warn('loadFavoriteMarkers failed:', err); }
   }
