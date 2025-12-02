@@ -11,7 +11,7 @@ jest.unstable_mockModule("child_process", () => ({
 // Re-import mocked version
 const { execFile } = await import("child_process");
 
-import { handlePathRequest } from "../controllers/pathfinderController.js";
+const { handlePathRequest } = await import("../controllers/pathfinderController.js");
 
 // Setup express app
 const app = express();
