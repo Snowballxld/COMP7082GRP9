@@ -146,7 +146,11 @@ window.addEventListener("DOMContentLoaded", () => {
         if (y > maxY) maxY = y;
       }
       return [[minX, minY], [maxX, maxY]];
-    } catch (e) { return null; }
+    } catch (e) 
+    { 
+      console.log(e.message);
+      return null; 
+    }
   };
 
   const roughCenter = (geom) => {
@@ -178,7 +182,12 @@ window.addEventListener("DOMContentLoaded", () => {
       const ok = sig === '%PDF-' || ct.includes('application/pdf');
       _existCache.set(url, ok);
       return ok;
-    } catch (e) { _existCache.set(url, false); return false; }
+    } catch (e) 
+    { 
+      console.log(e.message);
+      _existCache.set(url, false); 
+      return false; 
+    }
   };
 
   const filterExistingPDFs = async (buildingName, floorLabels) => {
@@ -558,8 +567,6 @@ window.addEventListener("DOMContentLoaded", () => {
     finally { isComputingPath = false; }
   }
 
-  async function loadNodes_DO_NOT_USE() { console.warn('Deprecated: loadNodes_DO_NOT_USE called'); }
-
   const app = initializeApp(window.firebaseConfig);
   const auth = getAuth(app);
 
@@ -600,7 +607,7 @@ window.addEventListener("DOMContentLoaded", () => {
         window.favoriteMarkers.push(marker);
 
         // Attach event handler after popup loads
-        marker.getElement().addEventListener('click', () => { setTimeout(() => { const btn = document.getElementById(`rm-${node.id}`); if (btn) btn.onclick = () => removeFavorite(node.id); }, 80); });
+        marker.getElement().addEventListener('click', () => { setTimeout(() => { const btn = document.getElementById(`rm-${node.id}`); }, 80); });
       });
     } catch (err) { console.warn('loadFavoriteMarkers failed:', err); }
   }
