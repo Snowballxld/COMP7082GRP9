@@ -1,203 +1,189 @@
-COMP7082 Group 9 — Wayfindr
+# 1. Overview
 
-A campus navigation web application built with Node.js, Express, Firebase Authentication, Firestore, and Mapbox GL JS.
+This repository contains Wayfindr, a campus navigation web application developed for COMP7082 Group 9.  
+The system uses Node.js, Express, Firebase Authentication, Firestore, and Mapbox GL JS to provide secure login, map interaction, node graph retrieval, and user-saved favorites.
 
-The system provides secure login, map interaction, Firestore-based node data, and user-saved favorites displayed directly on the map.
+# 2. Prerequisites
 
-📑 Table of Contents
+## 2.1 Required Software
 
-Prerequisites
+### Git
+Download: https://git-scm.com/download/win  
+Recommended installation options:
+- Select Visual Studio Code as your editor  
+- Select "Git from command line and 3rd-party software"
 
-Environment Setup
-
-Firebase Setup
-
-Install Dependencies
-
-Run the Server
-
-Project Structure
-
-Authentication & Sessions
-
-API Routes
-
-Logging
-
-Notes
-
-✅ Prerequisites
-Git
-
-Download: https://git-scm.com/download/win
-
-Recommended:
-
-Choose Visual Studio Code as your editor
-
-Select "Git from command line and 3rd-party software"
-
-Node.js + npm
-
+### Node.js + npm
 Download LTS: https://nodejs.org
 
 Verify installation:
-
+```bash
 node -v
 npm -v
+```
 
-⚙️ Environment Setup
+# 3. Environment Setup
 
-Copy the example environment file:
-
+## 3.1 Create Environment File
+```bash
 cp .env.example .env
+```
 
+## 3.2 Configure Required Variables
+Add the following in `.env`:
 
-Fill in the required fields:
-
+```
 FIREBASE_SERVICE_ACCOUNT_KEY='{"type": "service_account", ... }'
 FIREBASE_API_KEY=your_web_api_key
 FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 FIREBASE_PROJECT_ID=your_project_id
 MAPBOX_TOKEN=your_mapbox_access_token
 SESSION_SECRET=your_session_secret
+```
 
-🔥 Firebase Setup
+# 4. Firebase Setup
 
-Open Firebase Console
+## 4.1 Enable Firebase Services
+1. Open Firebase Console  
+2. Create or select your project  
+3. Enable:
+   - Authentication → Email/Password  
+   - Firestore Database  
 
-Create or select your project
+## 4.2 Generate Admin SDK Credentials
+1. Go to Project Settings → Service Accounts  
+2. Click "Generate new private key"  
+3. Copy the JSON output  
+4. Paste it into FIREBASE_SERVICE_ACCOUNT_KEY inside `.env`
 
-Enable Authentication → Sign-in method → Email/Password
+# 5. Install Dependencies
 
-Enable Firestore Database
-
-Generate Admin SDK credentials:
-
-Project Settings → Service Accounts
-
-Click “Generate new private key”
-
-Copy the JSON into FIREBASE_SERVICE_ACCOUNT_KEY in .env
-
-📦 Install Dependencies
+```bash
 npm install
-
+```
 
 This project uses:
+- express
+- firebase-admin
+- express-session
+- dotenv
+- winston
+- morgan
+- chalk
+- Mapbox GL JS
 
-express (web server)
+# 6. Run the Server
 
-firebase-admin (server-side auth + Firestore)
-
-express-session (session cookies)
-
-winston, morgan, chalk (logging & dev output)
-
-dotenv (environment management)
-
-Mapbox GL JS (frontend map engine)
-
-🚀 Run the Server
+```bash
 npm start
+```
 
+Visit:  
+http://localhost:5000
 
-Visit:
-➡️ http://localhost:5000
+# 7. Project Structure
 
+```
+/project-root
+│
+├── /__tests__/           # Unit Tests
+├── /config/              # firebase asset
+├── /public/              # Frontend assets
+├── /views/               # EJS templates
+├── /routes/              # API and auth routes
+├── /middleware/          # Auth + logging middleware
+├── /controllers/         # Node logic
+├── /floorPlans/          # Indoor logic
+├── /models/              # class object
+├── /logs/                # Winston log output
+├── server.js             # Main server
+└── .env                  # Environment variables
+```
 
-🔐 Authentication & Sessions
+# 8. Authentication & Sessions
 
-Authentication uses Firebase Web SDK (client) + Firebase Admin SDK (server).
+Wayfindr uses:
+- Firebase Web SDK (client)
+- Firebase Admin SDK (server)
+- express-session
 
-Login & Signup (EJS pages)
-/auth/login  
-/auth/signup
+## 8.1 Login and Signup Pages
+- /auth/login  
+- /auth/signup  
 
-Session Flow
+## 8.2 Session Flow
+1. Client signs in with Firebase Auth  
+2. Client sends ID token to backend: /auth/sessionLogin  
+3. Server verifies token and creates a secure session cookie  
+4. Protected routes require session
 
-Client signs in with Firebase Auth
-
-Sends ID token to backend (/auth/sessionLogin)
-
-Backend verifies token → Creates secure session cookie
-
-Protected routes require session
-
-Example middleware
+### Example Protected Route:
+```js
 import { checkSession } from "./middleware/authMiddleware.js";
 
 app.get("/map", checkSession, (req, res) => {
-    res.render("map", { user: req.session.user });
+  res.render("map", { user: req.session.user });
 });
+```
 
-🔗 API Routes
-🧭 Nodes API
+# 9. API Routes
 
-Firestore-backed building/POI graph data.
+## 9.1 Nodes API
 
-GET    /api/nodes
-POST   /api/nodes
+| Method | Route        | Description          |
+|--------|--------------|----------------------|
+| GET    | /api/nodes   | Fetch all nodes      |
+| POST   | /api/nodes   | Create/update nodes  |
 
-
-Nodes include:
-
+### Example Node:
+```json
 {
-  "id": "...",
+  "id": "node1",
   "long": -97.123,
   "lat": 49.123,
   "alt": 3,
   "connections": ["node2", "node5"]
 }
+```
 
-⭐ Favorites API (per-user Firestore subcollection)
-Method	Route	Description
-GET	/api/favorites	List all favorites sorted by lastUsed
-POST	/api/favorites	Add or update a favorite
-PATCH	/api/favorites/:nodeId/use	Mark favorite as recently used
-DELETE	/api/favorites/:nodeId	Remove a favorite
+## 9.2 Favorites API  
+Stored in Firestore at: users/{uid}/favorites/{nodeId}
 
-Each favorite contains:
+| Method | Route                        | Description                    |
+|--------|------------------------------|--------------------------------|
+| GET    | /api/favorites               | List all favorites             |
+| POST   | /api/favorites               | Add/update a favorite          |
+| PATCH  | /api/favorites/:nodeId/use   | Mark favorite as recently used |
+| DELETE | /api/favorites/:nodeId       | Remove a favorite              |
 
+### Example Favorite:
+```json
 {
   "nodeId": "abc123",
   "label": "My Entrance",
   "isKeyLocation": true,
-  "nodeMeta": { ... },
+  "nodeMeta": {},
   "addedAt": "...",
   "lastUsed": "..."
 }
+```
 
+# 10. Logging
 
-Favorites appear as highlighted markers on the Mapbox map.
-
-📊 Logging
-
-The app uses:
-
-Winston → log files (/logs/)
-
-Morgan → HTTP request logs
-
-Chalk → clean colorful CLI output
+The application uses:
+- Winston (log files in /logs/)
+- Morgan (HTTP request logs)
+- Chalk (console formatting)
 
 Logs include:
+- server start messages
+- authentication events
+- Firestore errors
+- request timing and status codes
 
-server start messages
+# 11. Notes
 
-auth verification events
-
-Firestore errors
-
-request timing & status codes
-
-📝 Notes
-
-All Firebase Admin operations are server-side and secure.
-
-Favorite nodes are stored as a subcollection:
-users/{uid}/favorites/{nodeId}
-
-The map automatically loads user favorites on page load.
-
-Critical Firebase and auth errors are logged and stored safely.
+- All Firebase Admin operations occur server-side and are secure.  
+- Favorites appear automatically on the map upon load.  
+- Sensitive keys must remain in .env and never be committed.  
+- Favorites are stored as user subcollections in Firestore.
